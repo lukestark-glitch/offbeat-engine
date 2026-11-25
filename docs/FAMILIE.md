@@ -28,7 +28,7 @@ make install
 `make install` baut das Plugin, signiert es ad-hoc und kopiert es:
 - **VST3** nach `~/Library/Audio/Plug-Ins/VST3/`
 - **LV2** nach `~/Library/Audio/Plug-Ins/LV2/`
-- **LADSPA** (nur Turbo und Hydraulics) nach `~/Library/Audio/Plug-Ins/LADSPA/` und in den LMMS-LADSPA-Ordner (`laddir` aus `~/.lmmsrc.xml`, z. B. `~/Documents/lmms/plugins/ladspa/`)
+- **LADSPA** (nur Turbo und Hydraulics) nach `~/Library/Audio/Plug-Ins/LADSPA/` und in den LMMS-LADSPA-Ordner (`laddir` aus `~/.lmmsrc.xml`, z. B. `~/Documents/lmms/plugins/ladspa/`). Dort liegt die Datei mit der Endung **`.so`**, denn LMMS 1.2 lädt nur solche Dateien.
 
 Danach Carla bzw. LMMS neu starten.
 
@@ -44,6 +44,18 @@ Danach Carla bzw. LMMS neu starten.
   - LADSPA hat keine eigene Oberfläche (nur einfache Regler) und kein Tempo.
 - **Pumpen im Takt (Hydraulics in LMMS):** Auf der Kick-Spur einen **Peak Controller** einfügen und ihn mit dem Regler **Trigger** von Hydraulics verbinden. Das ergibt echtes Sidechain-Pumpen, unabhängig vom Tempo. Die Schritte stehen in `docs/REGLER.md` von offbeat-hydraulics.
 - **Lautheit prüfen:** Den Song als WAV exportieren und `bin/turbo-render --in song.wav` ausführen (im Turbo-Repo). Es zeigt RMS und True-Peak vorher und nachher. Ziel im Drop sind −6 bis −9 dBFS RMS.
+
+## Demo-Projekt
+
+`~/Documents/lmms/projects/Offbeat Familie Demo.mmp` nutzt alle vier Plugins (160 BPM, F-Moll, 32 Takte):
+- **Engine** spielt Kick, Bass und Hats.
+- **Topline** spielt Akkorde, Melodie und Pfeife.
+- **Hydraulics** (LADSPA) pumpt Akkorde und Melodie. Ausgelöst wird es von einem Peak Controller auf der Kick.
+- **Turbo** (LADSPA, Auto) sitzt auf dem Master.
+
+Gemessen am LMMS-Render (`lmms render -x 1`): −7,5 dBFS RMS, True-Peak −0,32 dBTP.
+
+**Hinweis zum Rendern:** `lmms render` rechnet ohne `-x 1` standardmäßig 2-fach überabgetastet. Das erzeugt beim Herunterrechnen Zwischen-Sample-Spitzen über dem Ceiling.
 
 ## Gemeinsamer Code
 
