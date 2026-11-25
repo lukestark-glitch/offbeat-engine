@@ -22,7 +22,7 @@ Die Parameter-Tabelle ist die einzige Quelle für Plugin und Renderer. Neue Para
 
 ## Phasen
 
-### Phase 1 (dieser PR)
+### Phase 1 (dieser PR) – gebaut
 1. DPF-Gerüst, Build für VST3 + LV2 (x86_64), Installation + ad-hoc-Signatur.
 2. Globale Parameter: Mode, Volume, Drive, Tone, Width (Width nur auf Seitensignal > 150 Hz).
    Ausgang sauber begrenzt (≤ −0,1 dBFS), Denormals aus (FTZ/DAZ).
@@ -39,9 +39,6 @@ Eigene Oberfläche.
 
 ## Offene Fragen
 
-- **GitHub-Anmeldung:** Das `gh`-Token ist ungültig, und es gibt keine HTTPS-Zugangsdaten für
-  git. Remote ist gesetzt (`lukestark-glitch/offbeat-synth`), Commits liegen lokal. Bitte
-  `gh auth login -h github.com` ausführen, danach pushen und den PR öffnen.
 - **Bass-Decay-Kurve:** „Amp Decay“ ist als Zeit bis −40 dB umgesetzt (exponentiell). Falls
   sich der Bass zu „plucky“ anhört, wäre eine Hold-Phase eine Alternative.
 - **Bounce-Pitch-Kurve:** fällt exponentiell und erreicht den Zielton nach „Bounce Time“ zu ~95 %.
@@ -50,4 +47,8 @@ Eigene Oberfläche.
 - **Width bei Kick/Bass:** Die Kick ist mono, Width hat dort keine Wirkung. Beim Bass liegen die
   beiden verstimmten Oszillatoren links/rechts, Width regelt deren Breite oberhalb 150 Hz.
 - **Velocity:** skaliert die Lautstärke linear. Falls LMMS-Velocity stört, abschaltbar machen?
+- **VST3 vs. LV2 in Carla:** VST3 meldet zusätzlich ~2080 MIDI-CC-Parameter (DPF-Standard für
+  VST3), LV2 nur die 28 eigenen. Empfehlung: in Carla die LV2-Version nehmen.
+- **Hard-Bounce-Preset:** Body Time 70 ms statt Default 75 ms. Damit liegen alle drei
+  Tonhöhen-Messpunkte mittig im Toleranzband (bei 75 ms: 51,8 Hz bei 150 ms, Grenze 52).
 - **CLAP:** vorerst nicht gebaut (Carla 2.5 kann es nicht), lässt sich später im Makefile ergänzen.
