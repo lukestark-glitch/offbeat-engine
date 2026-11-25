@@ -26,6 +26,7 @@ public:
         length = (uint32_t)(lengthMs * 0.001f * sr);
         const float cutMs = p[kKickCut] < lengthMs ? p[kKickCut] : lengthMs;
         cutStart = length - (uint32_t)(cutMs * 0.001f * sr);
+        attack = p[kKickAttack] * 0.001f;
 
         drive = p[kKickDrive];
         click = p[kKickClick];
@@ -56,10 +57,10 @@ public:
         const float g = std::exp2(6.0f * drive);
         float y = std::tanh(g * osc.process(hz, sr)) / std::tanh(g);
 
-        // Hüllkurve: 1 ms Einblendung, Halten, Cosinus-Abbruch über "Cut" bis "Length".
+        // Hüllkurve: Cosinus-Einblendung über "Attack", Halten, Cosinus-Abbruch über "Cut" bis "Length".
         float amp = 1.0f;
-        if (t < 0.001f)
-            amp = 0.5f - 0.5f * std::cos(kPi * t / 0.001f);
+        if (t < attack)
+            amp = 0.5f - 0.5f * std::cos(kPi * t / attack);
         if (n >= cutStart)
             amp *= 0.5f + 0.5f * std::cos(kPi * (float)(n - cutStart) / (float)(length - cutStart + 1));
         y *= amp;
@@ -88,6 +89,7 @@ public:
 
 private:
     Sine osc;
+    float attack = 0.001f;
     Noise noise;
     Svf clickHp, clickLp;
     float sr = 48000.0f, fEnd = 43.65f, a1 = 0, a2 = 0, e1 = 0, e2 = 0, d1 = 0, d2 = 0;

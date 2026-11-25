@@ -80,6 +80,8 @@ enum ParamId {
     kRiserSiren,
     kRiserSirenRate,
 
+    kKickAttack, // nachträglich angehängt, damit bestehende Parameter-Nummern gleich bleiben
+
     kParamCount
 };
 

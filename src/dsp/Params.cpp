@@ -82,6 +82,8 @@ const ParamInfo kParams[kParamCount] = {
     { "Riser Volume Rise", "riser_vol",      "",     0,      1,       1,       0 },
     { "Riser Siren Depth", "riser_siren",    "st",   0,      12,      0,       0 },
     { "Riser Siren Rate",  "riser_rate",     "",     0,      4,       2,       kFlagInt, kSirenNames },
+
+    { "Kick Attack",       "kick_attack",    "ms",   0,      30,      1,       0 },
 };
 
 namespace {
