@@ -62,7 +62,7 @@ Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nac
 - Renderer: Das Host-Tempo wird jetzt vor den Noten eines Blocks gesetzt (vorher galt `--bpm` erst ab dem zweiten Block, wie es das Plugin schon richtig machte).
 
 ## Offene Fragen
-- **Octave-Standard:** 0, damit gespeicherte Sounds gleich klingen. In LMMS muss man +1 stellen (dokumentiert). Alternative: Standard +1.
+- **Octave-Standard:** Der Nutzer hat entschieden: **+1** (gleicht LMMS aus). Gespeicherte Projekte behalten ihren gespeicherten Wert. Der Renderer schickt `--note` wie LMMS 12 Halbtöne tiefer.
 - **Tempo in LMMS:** LMMS 1.2.2 gibt laut seinen Symbolen Tempo und Taktposition an Carla weiter (`handleGetTimeInfo`, `Song::getTempo`, `getBeatWithinBar`). Ob Carla Rack das an das Plugin durchreicht, kann nur ein Test in LMMS zeigen (Checkliste). Fallback ist eingebaut.
 - **Repo-Ordner:** Lokal heißt der Ordner noch `offbeat-synth` (nur der Remote zeigt auf offbeat-engine), damit die laufende Sitzung und ihre Pfade nicht brechen. Umbenennen ist jederzeit gefahrlos möglich.
 - **Kick Attack 0 ms:** Die Kick startet dann hart. Die Abnahme-Prüfung „weiche Einblendung“ schlägt bei 0 ms bewusst fehl; ab etwa 0,5 ms besteht sie.

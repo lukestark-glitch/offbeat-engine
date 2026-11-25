@@ -20,7 +20,7 @@ Presets wählst du in Carla unter „Programs“.
 | Drive | 0 … 100 % | 0 % | Sättigung auf alles, macht dichter und rauer |
 | Tone | 200 Hz … 20 kHz | 20 kHz | Low-Pass auf alles, nach links wird es dumpfer |
 | Width | 0 … 100 % | 50 % | Stereobreite; unter 150 Hz bleibt es immer mono |
-| Octave | −2 … +2 | 0 | Verschiebt alle Noten um Oktaven. **In LMMS auf +1 stellen:** LMMS schickt Noten 12 Halbtöne tiefer, als die Piano-Roll zeigt (LMMS-Taste F1 kommt als F0 an) |
+| Octave | −2 … +2 | +1 | Verschiebt alle Noten um Oktaven. Der Standard **+1** gleicht LMMS aus: LMMS schickt Noten 12 Halbtöne tiefer, als die Piano-Roll zeigt (LMMS-Taste F1 kommt als F0 an). In anderen Hosts (z. B. Carla-Tastatur) auf 0 stellen |
 | Host-Tempo | An/Aus | An | An: Tempo und Takt kommen vom Host. Aus (oder wenn der Host kein Tempo liefert): Es gilt BPM |
 | BPM | 60 … 220 | 160 | Tempo für Bounce Sync, Roll, Pad-LFO und Riser, wenn kein Host-Tempo genutzt wird |
 
