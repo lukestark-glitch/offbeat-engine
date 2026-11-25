@@ -11,7 +11,8 @@ src/dsp/                reiner DSP-Code, C++17, ohne DPF
                         TPT-SVF, Glättung, Hilfsfunktionen – von allen Modi genutzt
   Params.hpp/.cpp       Parameter-Tabelle (Name, Symbol, Bereich, Default) + Presets
   Engine.hpp/.cpp       Modus-Auswahl, globale Kette (Drive → Tone → Width → Limiter)
-  KickVoice / BassVoice je Modus eine Klasse (Phase 2: Hat, Stab, Pad, Riser)
+  Kick/Bass/Hat/Riser.hpp  je Modus eine Stimme
+  Poly.hpp              polyphone Supersaw-Stimme, gemeinsam für Stab/Lead und Pad
 plugin/                 DPF-Hülle: Parameter, Programme (Presets), MIDI, TimePosition
 tools/offbeat-render.cpp  Offline-Renderer: WAV + Messwerte + Abnahmeprüfung
 Makefile                `make` baut Plugin + Renderer, `make install` installiert + signiert
@@ -22,7 +23,7 @@ Die Parameter-Tabelle ist die einzige Quelle für Plugin und Renderer. Neue Para
 
 ## Phasen
 
-### Phase 1 (dieser PR) – gebaut
+### Phase 1 – fertig (PR #1)
 1. DPF-Gerüst, Build für VST3 + LV2 (x86_64), Installation + ad-hoc-Signatur.
 2. Globale Parameter: Mode, Volume, Drive, Tone, Width (Width nur auf Seitensignal > 150 Hz).
    Ausgang sauber begrenzt (≤ −0,1 dBFS), Denormals aus (FTZ/DAZ).
@@ -31,8 +32,15 @@ Die Parameter-Tabelle ist die einzige Quelle für Plugin und Renderer. Neue Para
 5. Presets für Kick und Bass (1–4c) als Plugin-Programme.
 6. `offbeat-render` mit Messwerten; Abnahme „Kick – Hard Bounce“ automatisch prüfbar (`--check`).
 
-### Phase 2
-Hat, Stab/Lead, Pad, Riser + restliche Presets (5–9), jeweils mit Render-Messung.
+### Phase 2 – gebaut (PR #2)
+1. Hat: 6 inharmonische Rechtecke + Rauschen, HP 12 dB, LP 24 dB, Closed/Open per Note, Choke.
+2. Stab/Lead: 8 Stimmen, Supersaw 1–7, Filter-Env, ADSR, Hoover-Drop, Chord-Hold, Glide.
+3. Pad: dieselbe Stimme mit Dreieck +12, langsamer Attack, langer Release, BPM-LFO auf Cutoff,
+   Stereo-Chorus.
+4. Riser: Bars 1–32 synchron zur Host-BPM, Noise↔Saw, Filter-Sweep, Pitch-/Volume-Rise, Sirene.
+5. Presets 5–9 (insgesamt 13). Width-Hochpass auf 48 dB/Okt., damit unter 150 Hz alles mono bleibt.
+6. `offbeat-render`: mehrere Noten (`--note F3@100`), Spektrum, Länge bis −40 dB, Korrelation,
+   `--check` für Kick, Hat, Riser und Mono-Bass bei Bass/Stab/Pad.
 
 ### Phase 3 (optional)
 Eigene Oberfläche.
@@ -51,4 +59,14 @@ Eigene Oberfläche.
   VST3), LV2 nur die 28 eigenen. Empfehlung: in Carla die LV2-Version nehmen.
 - **Hard-Bounce-Preset:** Body Time 70 ms statt Default 75 ms. Damit liegen alle drei
   Tonhöhen-Messpunkte mittig im Toleranzband (bei 75 ms: 51,8 Hz bei 150 ms, Grenze 52).
+- **Hat Closed/Open:** entscheidet die Note: Tonklasse A# (A#2, A#3 …) = Open, alles andere
+  = Closed. Die Presets „Closed Soft“ und „Open Soft“ unterscheiden sich daher nur leicht im Klang
+  (Open etwas dunkler, mehr Rauschen).
+- **Hat-High-Pass-Default 6 kHz** statt eines mittleren Werts. Nur so liegt der Schwerpunkt
+  bei ~5,9 kHz (Spec: 6–7 kHz) mit LP 7,5 kHz.
+- **Stab – Rave** spielt mit Chord-Hold „Moll“ (ein Finger = Moll-Dreiklang). Für eigene
+  Akkorde Chord auf „Aus“ stellen.
+- **Glide im Stab-Modus** gleitet von der zuletzt gespielten Note aus, auch polyphon.
+- **Riser** geht von 4/4-Takt aus (Bars × 4 Schläge). Ohne laufenden Transport läuft er
+  frei mit der zuletzt bekannten BPM.
 - **CLAP:** vorerst nicht gebaut (Carla 2.5 kann es nicht), lässt sich später im Makefile ergänzen.

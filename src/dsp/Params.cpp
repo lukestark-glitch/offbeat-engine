@@ -3,11 +3,16 @@
 namespace offbeat {
 
 const char* const kModeNames[kModeCount] = { "Kick", "Bass", "Hat", "Stab", "Pad", "Riser" };
+static const char* const kChordNames[3] = { "Aus", "Moll", "Dur" };
+static const char* const kPadLfoNames[5] = { "1/4", "1/2", "1 Takt", "2 Takte", "4 Takte" };
+static const char* const kSirenNames[5] = { "1/1", "1/2", "1/4", "1/8", "1/16" };
+const float kPadLfoBeats[5] = { 1, 2, 4, 8, 16 };
+const float kSirenBeats[5] = { 4, 2, 1, 0.5f, 0.25f };
 
 // clang-format off
 const ParamInfo kParams[kParamCount] = {
     // name                symbol            unit    min     max      default  flags
-    { "Mode",              "mode",           "",     0,      5,       0,       kFlagInt },
+    { "Mode",              "mode",           "",     0,      5,       0,       kFlagInt, kModeNames },
     { "Volume",            "volume",         "dB",   -40,    6,       -3,      0 },
     { "Drive",             "drive",          "",     0,      1,       0,       0 },
     { "Tone",              "tone",           "Hz",   200,    20000,   20000,   kFlagLog },
@@ -37,6 +42,46 @@ const ParamInfo kParams[kParamCount] = {
     { "Bass Bounce Time",  "bass_btime",     "ms",   5,      60,      20,      0 },
     { "Bass Glide",        "bass_glide",     "ms",   0,      200,     0,       0 },
     { "Bass Roll",         "bass_roll",      "",     0,      1,       0,       kFlagBool },
+
+    { "Hat Metal/Noise",   "hat_mix",        "",     0,      1,       0.45f,   0 },
+    { "Hat Pitch",         "hat_pitch",      "x",    0.5f,   2,       1,       0 },
+    { "Hat High-Pass",     "hat_hp",         "Hz",   2000,   8000,    6000,    kFlagLog },
+    { "Hat Low-Pass",      "hat_lp",         "Hz",   6000,   14000,   7500,    kFlagLog },
+    { "Hat Decay Closed",  "hat_closed",     "ms",   3,      50,      12,      0 },
+    { "Hat Decay Open",    "hat_open",       "ms",   20,     300,     70,      0 },
+
+    { "Stab Voices",       "stab_voices",    "",     1,      7,       7,       kFlagInt },
+    { "Stab Detune",       "stab_detune",    "",     0,      1,       0.3f,    0 },
+    { "Stab Mix",          "stab_mix",       "",     0,      1,       0.7f,    0 },
+    { "Stab Cutoff",       "stab_cutoff",    "Hz",   100,    16000,   3000,    kFlagLog },
+    { "Stab Resonance",    "stab_reso",      "",     0,      1,       0.2f,    0 },
+    { "Stab Filter Env",   "stab_envamt",    "",     0,      1,       0.4f,    0 },
+    { "Stab Filter Decay", "stab_fdecay",    "ms",   5,      2000,    200,     kFlagLog },
+    { "Stab Attack",       "stab_attack",    "ms",   0.5f,   2000,    1,       kFlagLog },
+    { "Stab Decay",        "stab_decay",     "ms",   5,      3000,    250,     kFlagLog },
+    { "Stab Sustain",      "stab_sustain",   "",     0,      1,       0.3f,    0 },
+    { "Stab Release",      "stab_release",   "ms",   5,      5000,    120,     kFlagLog },
+    { "Stab Hoover Drop",  "stab_hoover",    "st",   0,      24,      0,       0 },
+    { "Stab Chord",        "stab_chord",     "",     0,      2,       0,       kFlagInt, kChordNames },
+    { "Stab Glide",        "stab_glide",     "ms",   0,      500,     0,       0 },
+
+    { "Pad Detune",        "pad_detune",     "",     0,      1,       0.25f,   0 },
+    { "Pad Triangle +12",  "pad_tri",        "",     0,      1,       0.4f,    0 },
+    { "Pad Cutoff",        "pad_cutoff",     "Hz",   100,    12000,   1800,    kFlagLog },
+    { "Pad LFO Rate",      "pad_lfo_rate",   "",     0,      4,       3,       kFlagInt, kPadLfoNames },
+    { "Pad LFO Depth",     "pad_lfo_depth",  "",     0,      1,       0.4f,    0 },
+    { "Pad Attack",        "pad_attack",     "ms",   5,      5000,    600,     kFlagLog },
+    { "Pad Release",       "pad_release",    "ms",   20,     8000,    2000,    kFlagLog },
+    { "Pad Chorus",        "pad_chorus",     "",     0,      1,       0.6f,    0 },
+
+    { "Riser Bars",        "riser_bars",     "",     1,      32,      8,       kFlagInt },
+    { "Riser Noise/Saw",   "riser_mix",      "",     0,      1,       0.4f,    0 },
+    { "Riser Cutoff Start","riser_start",    "Hz",   100,    20000,   300,     kFlagLog },
+    { "Riser Cutoff End",  "riser_end",      "Hz",   100,    20000,   12000,   kFlagLog },
+    { "Riser Pitch Rise",  "riser_pitch",    "st",   0,      24,      12,      0 },
+    { "Riser Volume Rise", "riser_vol",      "",     0,      1,       1,       0 },
+    { "Riser Siren Depth", "riser_siren",    "st",   0,      12,      0,       0 },
+    { "Riser Siren Rate",  "riser_rate",     "",     0,      4,       2,       kFlagInt, kSirenNames },
 };
 
 namespace {
@@ -53,6 +98,20 @@ const V bassLate[]  = { { kMode, kModeBass }, { kBassAmpDecay, 90 }, { kBassFilt
 const V bassRoll[]  = { { kMode, kModeBass }, { kBassRoll, 1 }, { kBassCutoff, 220 },
                         { kBassEnvAmt, 0.35f }, { kBassFiltDecay, 60 }, { kBassAmpDecay, 110 },
                         { kBassSub, 0.8f }, { kBassBounce, 0 } };
+const V hatClosed[] = { { kMode, kModeHat } };
+const V hatOpen[]   = { { kMode, kModeHat }, { kHatLowPass, 7000 }, { kHatMix, 0.5f } };
+const V stabRave[]  = { { kMode, kModeStab }, { kStabDetune, 0.35f }, { kStabSustain, 0 },
+                        { kStabDecay, 180 }, { kStabRelease, 80 }, { kStabCutoff, 2500 },
+                        { kStabEnvAmt, 0.5f }, { kStabFiltDecay, 150 }, { kStabChord, 1 } };
+const V leadFlow[]  = { { kMode, kModeStab }, { kStabVoices, 5 }, { kStabDetune, 0.2f },
+                        { kStabGlide, 80 }, { kStabAttack, 5 }, { kStabDecay, 400 },
+                        { kStabSustain, 0.7f }, { kStabRelease, 450 }, { kStabCutoff, 4000 },
+                        { kStabEnvAmt, 0.25f } };
+const V padMilk[]   = { { kMode, kModePad }, { kTone, 8000 }, { kWidth, 0.8f } };
+const V riser8[]    = { { kMode, kModeRiser } };
+const V siren16[]   = { { kMode, kModeRiser }, { kRiserBars, 16 }, { kRiserMix, 0.9f },
+                        { kRiserStart, 1500 }, { kRiserEnd, 8000 }, { kRiserPitch, 7 },
+                        { kRiserSiren, 5 }, { kRiserSirenRate, 2 }, { kRiserVolume, 0.6f } };
 
 #define PRESET(name, arr) { name, arr, (int)(sizeof(arr) / sizeof(arr[0])) }
 } // namespace
@@ -64,6 +123,13 @@ const Preset kPresets[] = {
     PRESET("Bass - Rubber", bassRubber),
     PRESET("Bass - Late Bounce", bassLate),
     PRESET("Bass - Rolling Sub", bassRoll),
+    PRESET("Hat - Closed Soft", hatClosed),
+    PRESET("Hat - Open Soft", hatOpen),
+    PRESET("Stab - Rave", stabRave),
+    PRESET("Lead - Flow", leadFlow),
+    PRESET("Pad - Milchglas", padMilk),
+    PRESET("Riser - 8 Takte", riser8),
+    PRESET("Siren - 16 Takte", siren16),
 };
 // clang-format on
 

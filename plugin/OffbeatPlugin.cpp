@@ -20,7 +20,7 @@ protected:
     const char* getMaker() const override { return "Offbeat"; }
     const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(0, 1, 0); }
+    uint32_t getVersion() const override { return d_version(0, 2, 0); }
 
     void initParameter(uint32_t index, Parameter& parameter) override
     {
@@ -39,15 +39,16 @@ protected:
         parameter.ranges.max = info.max;
         parameter.ranges.def = info.def;
 
-        if (index == kMode) {
-            ParameterEnumerationValue* modes = new ParameterEnumerationValue[kModeCount];
-            for (int m = 0; m < kModeCount; ++m) {
-                modes[m].value = (float)m;
-                modes[m].label = kModeNames[m];
+        if (info.labels) {
+            const int count = (int)(info.max - info.min) + 1;
+            ParameterEnumerationValue* values = new ParameterEnumerationValue[count];
+            for (int i = 0; i < count; ++i) {
+                values[i].value = info.min + (float)i;
+                values[i].label = info.labels[i];
             }
-            parameter.enumValues.count = kModeCount;
+            parameter.enumValues.count = (uint8_t)count;
             parameter.enumValues.restrictedMode = true;
-            parameter.enumValues.values = modes; // DPF gibt den Speicher frei
+            parameter.enumValues.values = values; // DPF gibt den Speicher frei
         }
     }
 

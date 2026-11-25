@@ -92,6 +92,19 @@ struct Sine {
     }
 };
 
+// Naives Dreieck (Obertöne fallen mit 1/n², Aliasing unkritisch).
+struct Tri {
+    float phase = 0.0f;
+    float process(float hz, float sr)
+    {
+        const float y = 4.0f * std::fabs(phase - 0.5f) - 1.0f;
+        phase += hz / sr;
+        if (phase >= 1.0f)
+            phase -= std::floor(phase);
+        return y;
+    }
+};
+
 // TPT State-Variable-Filter (Zavalishin/Simper), 12 dB/Okt.
 struct Svf {
     float ic1 = 0.0f, ic2 = 0.0f;
@@ -126,6 +139,84 @@ struct Smoother {
     float value = 0.0f, coef = 0.0f;
     void setTime(float ms, float sr) { coef = tauCoef(ms, sr); }
     float process(float target) { return value = target + coef * (value - target); }
+};
+
+// ADSR: linearer Anstieg vom aktuellen Pegel, exponentieller Abfall (Zeiten bis −40 dB).
+struct Adsr {
+    enum Stage { kIdle, kAttack, kDecay, kRelease };
+    Stage stage = kIdle;
+    float level = 0.0f;
+
+    void gateOn() { stage = kAttack; }
+    void gateOff()
+    {
+        if (stage != kIdle)
+            stage = kRelease;
+    }
+    bool active() const { return stage != kIdle; }
+    float process(float aMs, float dMs, float sustain, float rMs, float sr)
+    {
+        switch (stage) {
+        case kAttack:
+            level += 1.0f / (aMs * 0.001f * sr + 1.0f);
+            if (level >= 1.0f) {
+                level = 1.0f;
+                stage = kDecay;
+            }
+            break;
+        case kDecay:
+            level = sustain + decayCoef(dMs, sr) * (level - sustain);
+            break;
+        case kRelease:
+            level *= decayCoef(rMs, sr);
+            if (level < 1e-4f) {
+                level = 0.0f;
+                stage = kIdle;
+            }
+            break;
+        case kIdle:
+            break;
+        }
+        return level;
+    }
+};
+
+// Stereo-Chorus: zwei modulierte Verzögerungen (12 ± 5 ms), links/rechts gegenphasig.
+struct Chorus {
+    static constexpr int kSize = 8192; // reicht für 17 ms bis 192 kHz
+    float buf[2][kSize] = {};
+    int write = 0;
+    float phase = 0.0f;
+
+    void reset()
+    {
+        for (auto& ch : buf)
+            for (float& v : ch)
+                v = 0.0f;
+    }
+    float read(const float* b, float delaySamples) const
+    {
+        float pos = (float)write - delaySamples;
+        while (pos < 0.0f)
+            pos += kSize;
+        const int i = (int)pos;
+        const float frac = pos - (float)i;
+        return b[i % kSize] + frac * (b[(i + 1) % kSize] - b[i % kSize]);
+    }
+    void process(float& l, float& r, float mix, float sr)
+    {
+        buf[0][write] = l;
+        buf[1][write] = r;
+        const float m = std::sin(2.0f * kPi * phase);
+        phase += 0.35f / sr;
+        if (phase >= 1.0f)
+            phase -= 1.0f;
+        const float wl = read(buf[0], (0.012f + 0.005f * m) * sr);
+        const float wr = read(buf[1], (0.012f - 0.005f * m) * sr);
+        write = (write + 1) % kSize;
+        l += mix * (wl - l) * 0.5f;
+        r += mix * (wr - r) * 0.5f;
+    }
 };
 
 } // namespace offbeat
