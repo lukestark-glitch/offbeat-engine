@@ -3,7 +3,10 @@
 #pragma once
 
 #include "Bass.hpp"
+#include "Hat.hpp"
 #include "Kick.hpp"
+#include "Poly.hpp"
+#include "Riser.hpp"
 
 namespace offbeat {
 
@@ -26,6 +29,8 @@ public:
 
 private:
     void resetVoices();
+    void startPoly(int key, float note, float velocity);
+    PolySettings polySettings() const;
 
     float params[kParamCount];
     float sr = 48000.0f;
@@ -39,8 +44,18 @@ private:
     KickVoice kicks[2]; // abwechselnd, damit eine neue Kick die alte weich ablösen kann
     int kickIndex = 0;
     BassVoice bass;
+    HatVoice hats[2]; // wie bei der Kick: neuer Schlag (oder Closed-Choke) blendet den alten aus
+    int hatIndex = 0;
+    static constexpr int kPolyVoices = 8;
+    PolyVoice poly[kPolyVoices];
+    uint32_t polyAge = 0;
+    int lastPolyNote = -1;
+    Noise rnd;
+    RiserVoice riser;
+    Chorus chorus;
 
-    Svf toneL, toneR, widthHp;
+    Svf toneL, toneR;
+    Svf widthHp[4]; // Hochpass 48 dB/Okt. aufs Seitensignal: unter 150 Hz bleibt alles mono
     Smoother volume;
 };
 

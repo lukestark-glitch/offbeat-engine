@@ -40,6 +40,46 @@ enum ParamId {
     kBassGlide,
     kBassRoll,
 
+    kHatMix,
+    kHatPitch,
+    kHatHighPass,
+    kHatLowPass,
+    kHatClosed,
+    kHatOpen,
+
+    kStabVoices,
+    kStabDetune,
+    kStabMix,
+    kStabCutoff,
+    kStabReso,
+    kStabEnvAmt,
+    kStabFiltDecay,
+    kStabAttack,
+    kStabDecay,
+    kStabSustain,
+    kStabRelease,
+    kStabHoover,
+    kStabChord,
+    kStabGlide,
+
+    kPadDetune,
+    kPadTri,
+    kPadCutoff,
+    kPadLfoRate,
+    kPadLfoDepth,
+    kPadAttack,
+    kPadRelease,
+    kPadChorus,
+
+    kRiserBars,
+    kRiserMix,
+    kRiserStart,
+    kRiserEnd,
+    kRiserPitch,
+    kRiserVolume,
+    kRiserSiren,
+    kRiserSirenRate,
+
     kParamCount
 };
 
@@ -51,10 +91,15 @@ struct ParamInfo {
     const char* unit;
     float min, max, def;
     uint32_t flags;
+    const char* const* labels = nullptr; // Namen für ganzzahlige Auswahl-Parameter, sonst nullptr
 };
 
 extern const ParamInfo kParams[kParamCount];
 extern const char* const kModeNames[kModeCount];
+
+// Notenwerte in Schlägen für Pad-LFO und Sirene (Index = Parameterwert).
+extern const float kPadLfoBeats[5];
+extern const float kSirenBeats[5];
 
 struct Preset {
     const char* name;
