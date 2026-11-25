@@ -1,4 +1,4 @@
-# Plan – Offbeat Bounce-Synth
+# Plan – Offbeat Engine (früher Offbeat Bounce-Synth)
 
 Grundlage: `OFFBEAT_SYNTH_SPEC.md`. Ein Plugin (VST3 + LV2, DPF), Modus-Parameter wählt den Klang.
 
@@ -54,7 +54,17 @@ Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nac
 - **Zahleneingabe** am Regler (Klick auf den Wert oder Rechtsklick).
 - **JSON** kopieren und einfügen über die Zwischenablage; `offbeat-render --json` liest dasselbe Format (`src/dsp/ParamText.cpp`).
 
+### Offbeat Engine (Umbenennung + Familie, PR #5)
+- Anzeigename „Offbeat Engine“ (Carla, LV2 `doap:name`, VST3, Logo). URI, VST3-IDs, Bundle-Name und `getLabel()` bleiben, damit gespeicherte Projekte laden.
+- Neue Parameter hinten angehängt: **Octave** (−2…+2), **Host-Tempo** (An/Aus), **BPM** (60–220, Fallback).
+- **Gemeinsamer Code für die Familie: bewusste Kopie statt Submodule.** Gründe: Jedes Repo baut für sich (nur DPF als Submodule, keine verschachtelten Submodule mit doppeltem DPF), die gemeinsamen Teile sind klein und ändern sich selten, und ein Plugin kann sie anpassen, ohne die anderen zu brechen. Die Kopien tragen im Kopf ihre Quelle (`offbeat-engine`), Änderungen werden dorthin zurückgespielt. Gemeinsam: `ParamInfo.hpp`, `ParamText.*` (Zahleneingabe, JSON), `Blocks.hpp` (DSP-Bausteine), `OffbeatKit.hpp` (Look und Bedienung), `OffbeatParam.hpp` (ParamInfo → DPF).
+- Die Engine-Oberfläche nutzt jetzt selbst `OffbeatKit.hpp` (gleicher Look wie vorher).
+- Renderer: Das Host-Tempo wird jetzt vor den Noten eines Blocks gesetzt (vorher galt `--bpm` erst ab dem zweiten Block, wie es das Plugin schon richtig machte).
+
 ## Offene Fragen
+- **Octave-Standard:** 0, damit gespeicherte Sounds gleich klingen. In LMMS muss man +1 stellen (dokumentiert). Alternative: Standard +1.
+- **Tempo in LMMS:** LMMS 1.2.2 gibt laut seinen Symbolen Tempo und Taktposition an Carla weiter (`handleGetTimeInfo`, `Song::getTempo`, `getBeatWithinBar`). Ob Carla Rack das an das Plugin durchreicht, kann nur ein Test in LMMS zeigen (Checkliste). Fallback ist eingebaut.
+- **Repo-Ordner:** Lokal heißt der Ordner noch `offbeat-synth` (nur der Remote zeigt auf offbeat-engine), damit die laufende Sitzung und ihre Pfade nicht brechen. Umbenennen ist jederzeit gefahrlos möglich.
 - **Kick Attack 0 ms:** Die Kick startet dann hart. Die Abnahme-Prüfung „weiche Einblendung“ schlägt bei 0 ms bewusst fehl; ab etwa 0,5 ms besteht sie.
 - **JSON:** %-Regler stehen im JSON als 0…1 (wie im Plugin), nicht als Prozent. Nicht genannte Regler bleiben unverändert. Den Knopf KOPIEREN habe ich dazugebaut, damit man Claude den aktuellen Stand geben kann.
 - **Tastatur im Host:** Ob Tippen ankommt, hängt davon ab, ob der Host dem Plugin-Fenster die Tastatur gibt (Carla-Bridge-Fenster: sollte gehen).

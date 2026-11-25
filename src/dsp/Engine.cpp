@@ -28,8 +28,8 @@ void Engine::setParam(int id, float value)
         return;
     const ParamInfo& info = kParams[id];
     value = clampf(value, info.min, info.max);
-    if (id == kMode && (int)value != (int)params[kMode])
-        resetVoices();
+    if ((id == kMode || id == kOctave) && (int)value != (int)params[id])
+        resetVoices(); // bei neuer Oktave passen gehaltene Noten nicht mehr zu ihrem Note-Off
     params[id] = value;
 }
 
@@ -51,10 +51,16 @@ void Engine::resetVoices()
         f.reset();
 }
 
+// Tempo vom Host nur, wenn "Tempo from Host" an ist und der Host eines liefert; sonst läuft das
+// Raster frei mit "Tempo BPM" (Fallback, falls LMMS/Carla kein Tempo weitergibt).
 void Engine::setTransport(bool playing, double beatPosition, double hostBpm)
 {
-    if (hostBpm > 0.0)
-        bpm = hostBpm;
+    if (params[kTempoHost] < 0.5f || hostBpm <= 0.0) {
+        bpm = params[kTempoBpm];
+        hostPlaying = false;
+        return;
+    }
+    bpm = hostBpm;
     hostPlaying = playing;
     if (playing)
         beatPos = beatPosition;
@@ -62,6 +68,7 @@ void Engine::setTransport(bool playing, double beatPosition, double hostBpm)
 
 void Engine::noteOn(int note, int velocity)
 {
+    note = transpose(note);
     const float vel = clampf((float)velocity / 127.0f, 0.0f, 1.0f);
     if (heldCount < 16)
         heldNotes[heldCount++] = note;
@@ -154,6 +161,7 @@ PolySettings Engine::polySettings() const
 
 void Engine::noteOff(int note)
 {
+    note = transpose(note);
     int i = 0;
     while (i < heldCount && heldNotes[i] != note)
         ++i;

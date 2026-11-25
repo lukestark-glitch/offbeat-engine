@@ -1,6 +1,7 @@
 // DPF-Hülle: reicht Parameter, Programme, MIDI und Host-Transport an die Engine weiter.
 #include "DistrhoPlugin.hpp"
 #include "Engine.hpp"
+#include "OffbeatParam.hpp"
 
 START_NAMESPACE_DISTRHO
 
@@ -20,37 +21,9 @@ protected:
     const char* getMaker() const override { return "Offbeat"; }
     const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
     const char* getLicense() const override { return "ISC"; }
-    uint32_t getVersion() const override { return d_version(0, 2, 0); }
+    uint32_t getVersion() const override { return d_version(0, 3, 0); }
 
-    void initParameter(uint32_t index, Parameter& parameter) override
-    {
-        const ParamInfo& info = kParams[index];
-        parameter.hints = kParameterIsAutomatable;
-        if (info.flags & kFlagLog)
-            parameter.hints |= kParameterIsLogarithmic;
-        if (info.flags & kFlagBool)
-            parameter.hints |= kParameterIsBoolean | kParameterIsInteger;
-        if (info.flags & kFlagInt)
-            parameter.hints |= kParameterIsInteger;
-        parameter.name = info.name;
-        parameter.symbol = info.symbol;
-        parameter.unit = info.unit;
-        parameter.ranges.min = info.min;
-        parameter.ranges.max = info.max;
-        parameter.ranges.def = info.def;
-
-        if (info.labels) {
-            const int count = (int)(info.max - info.min) + 1;
-            ParameterEnumerationValue* values = new ParameterEnumerationValue[count];
-            for (int i = 0; i < count; ++i) {
-                values[i].value = info.min + (float)i;
-                values[i].label = info.labels[i];
-            }
-            parameter.enumValues.count = (uint8_t)count;
-            parameter.enumValues.restrictedMode = true;
-            parameter.enumValues.values = values; // DPF gibt den Speicher frei
-        }
-    }
+    void initParameter(uint32_t index, Parameter& parameter) override { fillParameter(kParams[index], parameter); }
 
     void initProgramName(uint32_t index, String& programName) override { programName = kPresets[index].name; }
 

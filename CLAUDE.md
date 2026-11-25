@@ -1,4 +1,4 @@
-# CLAUDE.md – Offbeat Bounce-Synth
+# CLAUDE.md – Offbeat Engine (Repo offbeat-engine)
 
 Projekt: eigener Synth-Plugin (VST3 + LV2, DPF) für Hard Bounce / Bounce Techno. Läuft in LMMS 1.2.2 über Carla Rack auf einem Intel-Mac (MacBook Pro 2019). Die vollständige Aufgabe steht in `OFFBEAT_SYNTH_SPEC.md`: zuerst lesen.
 
@@ -9,6 +9,14 @@ Projekt: eigener Synth-Plugin (VST3 + LV2, DPF) für Hard Bounce / Bounce Techno
 - **Erst schauen, dann bauen.** Vorhandenes wiederverwenden (DSP-Bausteine wie Oszillatoren, Hüllkurven, Filter nur einmal schreiben und von allen Modi nutzen). So wenig neuer Text wie möglich, keine Extra-Features über die Spezifikation hinaus.
 - **Abhängigkeiten:** Einzige externe Abhängigkeit ist DPF (Git-Submodule). Keine weiteren Bibliotheken.
 - **Tests:** Nur die betroffenen Tests laufen lassen. Ändert sich ein Modus, mit `offbeat-render` genau diesen Modus rendern und gegen die Abnahmekriterien der Spezifikation messen. Reine Doku-Änderungen brauchen keinen Testlauf.
+
+## Offbeat-Familie
+
+- Dieses Repo ist **Offbeat Engine** (früher offbeat-synth). Geschwister: offbeat-topline, offbeat-turbo, offbeat-hydraulics. Übersicht: `docs/FAMILIE.md`.
+- **Gemeinsamer Code** (bewusste Kopie in jedem Repo, Quelle ist dieses Repo; bei Änderungen in die anderen zurückspielen): `src/dsp/ParamInfo.hpp`, `src/dsp/ParamText.*`, `src/dsp/Blocks.hpp`, `plugin/OffbeatKit.hpp`, `plugin/OffbeatParam.hpp`.
+- **Nie ändern:** LV2-URI (`https://github.com/lukestark-glitch/offbeat-synth`, enthält absichtlich den alten Repo-Namen), VST3-IDs (`Ofbt`/`OfbS`), Bundle-Name `offbeat`. Sonst laden gespeicherte LMMS-Projekte nicht mehr. Parameter nur **hinten anhängen**.
+- **LMMS:** schickt Noten 12 Halbtöne tiefer als angezeigt (Regler Octave). Tempo kommt laut LMMS-Symbolen (`CarlaInstrument::handleGetTimeInfo`, `Song::getTempo`) über Carla an; Fallback: Host-Tempo aus + BPM.
+- PRs dürfen nach grünen Checks selbst gemergt werden. `docs/HANDOFF.md` kurz aktuell halten.
 
 ## Regeln
 

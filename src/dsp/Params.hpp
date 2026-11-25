@@ -2,6 +2,8 @@
 // Neue Parameter nur hinten anhängen, sonst passen gespeicherte Projekte nicht mehr.
 #pragma once
 
+#include "ParamInfo.hpp"
+
 #include <cstdint>
 
 namespace offbeat {
@@ -81,19 +83,11 @@ enum ParamId {
     kRiserSirenRate,
 
     kKickAttack, // nachträglich angehängt, damit bestehende Parameter-Nummern gleich bleiben
+    kOctave,     // LMMS schickt Noten 12 Halbtöne tiefer als angezeigt
+    kTempoHost,  // An: Tempo und Takt vom Host; Aus oder ohne Host-Tempo: Tempo BPM
+    kTempoBpm,
 
     kParamCount
-};
-
-enum ParamFlags : uint32_t { kFlagLog = 1, kFlagBool = 2, kFlagInt = 4 };
-
-struct ParamInfo {
-    const char* name;
-    const char* symbol;
-    const char* unit;
-    float min, max, def;
-    uint32_t flags;
-    const char* const* labels = nullptr; // Namen für ganzzahlige Auswahl-Parameter, sonst nullptr
 };
 
 extern const ParamInfo kParams[kParamCount];
@@ -116,5 +110,8 @@ extern const int kPresetCount;
 // Schreibt alle Parameter-Werte des Presets (Defaults + Abweichungen) nach `out`.
 void applyPreset(int index, float out[kParamCount]);
 void applyDefaults(float out[kParamCount]);
+
+// Parameter eines Modus in Anzeige-Reihenfolge; Rückgabe: Anzahl (höchstens 16).
+int modeParams(int mode, int out[16]);
 
 } // namespace offbeat
