@@ -42,10 +42,15 @@ Die Parameter-Tabelle ist die einzige Quelle für Plugin und Renderer. Neue Para
 6. `offbeat-render`: mehrere Noten (`--note F3@100`), Spektrum, Länge bis −40 dB, Korrelation,
    `--check` für Kick, Hat, Riser und Mono-Bass bei Bass/Stab/Pad.
 
-### Phase 3 (optional)
-Eigene Oberfläche.
+### Phase 3 – gebaut (PR #3)
+Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nach den Vibe-Bildern des Nutzers (Y2K-Rave/Tuning: Nachtblau, Chrom, Neon-Swoosh, Ticket-Etiketten, eine Farbe pro Modus, Auto-Bild des Nutzers in `assets/car.png`, beim Build per `xxd -i` eingebettet), skaliert mit der Bildschirmauflösung.
+- Oben die Modus-Reiter, darunter die globalen Regler (Volume, Drive, Tone, Width) und die Regler des aktiven Modus.
+- Bedienung: ziehen hoch/runter, mit Shift fein, Mausrad, Doppelklick setzt den Standardwert, An/Aus-Schalter per Klick.
+- Die Parameter-Liste (`Params.cpp`) liefert Namen, Bereiche und Einheiten, deshalb gibt es keine zweite Liste.
+- LV2 ist jetzt eine einzelne Datei `offbeat.dylib` (DSP + UI). DPF warnt dabei wegen „direct access“; das ist harmlos, weil die UI nur über Parameter mit dem DSP spricht.
 
 ## Offene Fragen
+- **Oberfläche:** Farben pro Modus und das eigene Offbeat-Logo habe ich selbst gewählt (inspiriert, nicht kopiert), alles leicht änderbar. Die Oberfläche hat keine Preset-Auswahl; Presets wählt man weiter über den Host (Carla „Programs“).
 
 - **Bass-Decay-Kurve:** „Amp Decay“ ist als Zeit bis −40 dB umgesetzt (exponentiell). Falls
   sich der Bass zu „plucky“ anhört, wäre eine Hold-Phase eine Alternative.

@@ -31,7 +31,7 @@ install: plugin
 	cp -R bin/offbeat.vst3 "$(VST3_DIR)/"
 	cp -R bin/offbeat.lv2 "$(LV2_DIR)/"
 	codesign --force --deep -s - "$(VST3_DIR)/offbeat.vst3"
-	codesign --force -s - "$(LV2_DIR)/offbeat.lv2/offbeat_dsp.dylib"  # LV2-Ordner ist kein Bundle
+	codesign --force -s - "$(LV2_DIR)/offbeat.lv2/offbeat.dylib"  # LV2-Ordner ist kein Bundle
 
 clean:
 	rm -rf bin build
