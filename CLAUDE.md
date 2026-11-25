@@ -13,7 +13,7 @@ Projekt: eigener Synth-Plugin (VST3 + LV2, DPF) für Hard Bounce / Bounce Techno
 ## Offbeat-Familie
 
 - Dieses Repo ist **Offbeat Engine** (früher offbeat-synth). Geschwister: offbeat-topline, offbeat-turbo, offbeat-hydraulics. Übersicht: `docs/FAMILIE.md`.
-- **Gemeinsamer Code** (bewusste Kopie in jedem Repo, Quelle ist dieses Repo; bei Änderungen in die anderen zurückspielen): `src/dsp/ParamInfo.hpp`, `src/dsp/ParamText.*`, `src/dsp/Blocks.hpp`, `plugin/OffbeatKit.hpp`, `plugin/OffbeatParam.hpp`.
+- **Gemeinsamer Code** (bewusste Kopie in jedem Repo, Quelle ist dieses Repo; bei Änderungen in die anderen zurückspielen): `src/dsp/ParamInfo.hpp`, `src/dsp/ParamText.*`, `src/dsp/Blocks.hpp`, `plugin/OffbeatKit.hpp`, `plugin/OffbeatParam.hpp`, `tools/Measure.hpp`.
 - **Nie ändern:** LV2-URI (`https://github.com/lukestark-glitch/offbeat-synth`, enthält absichtlich den alten Repo-Namen), VST3-IDs (`Ofbt`/`OfbS`), Bundle-Name `offbeat`. Sonst laden gespeicherte LMMS-Projekte nicht mehr. Parameter nur **hinten anhängen**.
 - **LMMS:** schickt Noten 12 Halbtöne tiefer als angezeigt (Regler Octave). Tempo kommt laut LMMS-Symbolen (`CarlaInstrument::handleGetTimeInfo`, `Song::getTempo`) über Carla an; Fallback: Host-Tempo aus + BPM.
 - PRs dürfen nach grünen Checks selbst gemergt werden. `docs/HANDOFF.md` kurz aktuell halten.

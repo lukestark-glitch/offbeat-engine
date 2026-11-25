@@ -5,7 +5,7 @@
 
 CXX ?= c++
 DSP_SRC = src/dsp/Engine.cpp src/dsp/Params.cpp src/dsp/ParamText.cpp
-DSP_HDR = $(wildcard src/dsp/*.hpp)
+DSP_HDR = $(wildcard src/dsp/*.hpp) tools/Measure.hpp
 VST3_DIR = $(HOME)/Library/Audio/Plug-Ins/VST3
 LV2_DIR  = $(HOME)/Library/Audio/Plug-Ins/LV2
 
