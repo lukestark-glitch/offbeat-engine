@@ -1,0 +1,109 @@
+// DPF-Hülle: reicht Parameter, Programme, MIDI und Host-Transport an die Engine weiter.
+#include "DistrhoPlugin.hpp"
+#include "Engine.hpp"
+
+START_NAMESPACE_DISTRHO
+
+using namespace offbeat;
+
+class OffbeatPlugin : public Plugin {
+public:
+    OffbeatPlugin()
+        : Plugin(kParamCount, kPresetCount, 0)
+    {
+        engine.setSampleRate((float)getSampleRate());
+    }
+
+protected:
+    const char* getLabel() const override { return "Offbeat"; }
+    const char* getDescription() const override { return "Bounce-Synth: Kick, Bass, Hat, Stab, Pad, Riser"; }
+    const char* getMaker() const override { return "Offbeat"; }
+    const char* getHomePage() const override { return DISTRHO_PLUGIN_URI; }
+    const char* getLicense() const override { return "ISC"; }
+    uint32_t getVersion() const override { return d_version(0, 1, 0); }
+
+    void initParameter(uint32_t index, Parameter& parameter) override
+    {
+        const ParamInfo& info = kParams[index];
+        parameter.hints = kParameterIsAutomatable;
+        if (info.flags & kFlagLog)
+            parameter.hints |= kParameterIsLogarithmic;
+        if (info.flags & kFlagBool)
+            parameter.hints |= kParameterIsBoolean | kParameterIsInteger;
+        if (info.flags & kFlagInt)
+            parameter.hints |= kParameterIsInteger;
+        parameter.name = info.name;
+        parameter.symbol = info.symbol;
+        parameter.unit = info.unit;
+        parameter.ranges.min = info.min;
+        parameter.ranges.max = info.max;
+        parameter.ranges.def = info.def;
+
+        if (index == kMode) {
+            ParameterEnumerationValue* modes = new ParameterEnumerationValue[kModeCount];
+            for (int m = 0; m < kModeCount; ++m) {
+                modes[m].value = (float)m;
+                modes[m].label = kModeNames[m];
+            }
+            parameter.enumValues.count = kModeCount;
+            parameter.enumValues.restrictedMode = true;
+            parameter.enumValues.values = modes; // DPF gibt den Speicher frei
+        }
+    }
+
+    void initProgramName(uint32_t index, String& programName) override { programName = kPresets[index].name; }
+
+    void loadProgram(uint32_t index) override
+    {
+        float values[kParamCount];
+        applyPreset((int)index, values);
+        for (int i = 0; i < kParamCount; ++i)
+            engine.setParam(i, values[i]);
+    }
+
+    float getParameterValue(uint32_t index) const override { return engine.getParam((int)index); }
+    void setParameterValue(uint32_t index, float value) override { engine.setParam((int)index, value); }
+
+    void sampleRateChanged(double newSampleRate) override { engine.setSampleRate((float)newSampleRate); }
+
+    void run(const float**, float** outputs, uint32_t frames, const MidiEvent* events, uint32_t eventCount) override
+    {
+        const TimePosition& tp = getTimePosition();
+        if (tp.bbt.valid) {
+            const double beat = (double)(tp.bbt.bar - 1) * tp.bbt.beatsPerBar + (tp.bbt.beat - 1)
+                              + tp.bbt.tick / tp.bbt.ticksPerBeat;
+            engine.setTransport(tp.playing, beat, tp.bbt.beatsPerMinute);
+        } else {
+            engine.setTransport(false, 0.0, 0.0);
+        }
+
+        uint32_t pos = 0;
+        for (uint32_t e = 0; e < eventCount; ++e) {
+            const MidiEvent& ev = events[e];
+            if (ev.size > 3 || ev.frame >= frames)
+                continue;
+            if (ev.frame > pos) {
+                engine.process(outputs[0] + pos, outputs[1] + pos, ev.frame - pos);
+                pos = ev.frame;
+            }
+            const uint8_t status = ev.data[0] & 0xF0;
+            if (status == 0x90 && ev.data[2] > 0)
+                engine.noteOn(ev.data[1], ev.data[2]);
+            else if (status == 0x80 || status == 0x90)
+                engine.noteOff(ev.data[1]);
+            else if (status == 0xB0 && (ev.data[1] == 120 || ev.data[1] == 123))
+                engine.allNotesOff();
+        }
+        if (pos < frames)
+            engine.process(outputs[0] + pos, outputs[1] + pos, frames - pos);
+    }
+
+private:
+    Engine engine;
+
+    DISTRHO_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(OffbeatPlugin)
+};
+
+Plugin* createPlugin() { return new OffbeatPlugin(); }
+
+END_NAMESPACE_DISTRHO
