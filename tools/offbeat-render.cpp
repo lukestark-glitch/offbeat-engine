@@ -337,6 +337,7 @@ int main(int argc, char** argv)
     const uint32_t block = 256;
     size_t next = 0;
     for (uint32_t pos = 0; pos < total;) {
+        engine.setTransport(true, (double)pos / sr * bpm / 60.0, bpm); // wie im Plugin: vor den Noten des Blocks
         while (next < events.size() && events[next].frame <= pos) {
             const Event& e = events[next++];
             if (e.on)
@@ -344,7 +345,6 @@ int main(int argc, char** argv)
             else
                 engine.noteOff(e.note);
         }
-        engine.setTransport(true, (double)pos / sr * bpm / 60.0, bpm);
         uint32_t n = total - pos < block ? total - pos : block;
         if (next < events.size() && events[next].frame < pos + n)
             n = events[next].frame - pos;

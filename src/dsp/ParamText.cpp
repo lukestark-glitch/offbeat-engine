@@ -10,9 +10,6 @@
 namespace offbeat {
 
 namespace {
-// Erster Parameter jedes Modus; der Modus reicht bis zum ersten des nächsten.
-const int kModeFirst[kModeCount + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kRiserSirenRate + 1 };
-
 float clampParam(int p, float v)
 {
     const ParamInfo& i = kParams[p];
@@ -47,17 +44,6 @@ int findSymbol(const char* symbol)
     return -1;
 }
 } // namespace
-
-int modeParams(int mode, int out[16])
-{
-    int n = 0;
-    for (int p = kModeFirst[mode]; p < kModeFirst[mode + 1]; ++p) {
-        out[n++] = p;
-        if (p == kKickCut) // nachträglich angehängt, gehört hinter "Cut"
-            out[n++] = kKickAttack;
-    }
-    return n;
-}
 
 bool parseParamText(int p, const char* text, float& out)
 {
@@ -124,7 +110,7 @@ int applyJson(const char* json, float values[kParamCount], bool changed[kParamCo
         }
 
         const int p = findSymbol(key.c_str());
-        if (p < 0) {
+        if (p < 0 || (kParams[p].flags & kFlagOutput)) {
             errors += (errors.empty() ? "" : ", ") + key + " unbekannt";
             continue;
         }
@@ -144,11 +130,8 @@ int applyJson(const char* json, float values[kParamCount], bool changed[kParamCo
     return count;
 }
 
-std::string toJson(const float values[kParamCount])
+std::string toJson(const float values[kParamCount], const int* list, int n)
 {
-    const int mode = (int)values[kMode];
-    int list[24] = { kMode, kVolume, kDrive, kTone, kWidth };
-    const int n = 5 + modeParams(mode < 0 || mode >= kModeCount ? 0 : mode, list + 5);
     std::string out = "{\n";
     char buf[96];
     for (int i = 0; i < n; ++i) {

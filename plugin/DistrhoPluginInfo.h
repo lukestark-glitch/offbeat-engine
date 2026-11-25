@@ -2,7 +2,7 @@
 #define DISTRHO_PLUGIN_INFO_H_INCLUDED
 
 #define DISTRHO_PLUGIN_BRAND   "Offbeat"
-#define DISTRHO_PLUGIN_NAME    "Offbeat"
+#define DISTRHO_PLUGIN_NAME    "Offbeat Engine"
 #define DISTRHO_PLUGIN_URI     "https://github.com/lukestark-glitch/offbeat-synth"
 #define DISTRHO_PLUGIN_CLAP_ID "com.github.lukestark-glitch.offbeat"
 

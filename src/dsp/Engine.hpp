@@ -35,6 +35,11 @@ private:
     float params[kParamCount];
     float sr = 48000.0f;
     double beatPos = 0.0, bpm = 160.0;
+    int transpose(int note) const
+    {
+        const int n = note + 12 * (int)params[kOctave];
+        return n < 0 ? 0 : (n > 127 ? 127 : n);
+    }
     bool hostPlaying = false, started = false;
     int64_t lastSixteenth = -1;
 

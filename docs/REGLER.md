@@ -1,4 +1,4 @@
-# Offbeat – alle Regler
+# Offbeat Engine – alle Regler
 
 Oben in der Oberfläche wählst du den **Modus**. Darunter liegen die vier **globalen Regler**, die immer gelten, und die Regler des gewählten Modus. Ein Plugin spielt immer nur einen Modus. Für Kick, Bass und Hats nimmst du also je eine eigene Spur mit Offbeat.
 
@@ -20,6 +20,11 @@ Presets wählst du in Carla unter „Programs“.
 | Drive | 0 … 100 % | 0 % | Sättigung auf alles, macht dichter und rauer |
 | Tone | 200 Hz … 20 kHz | 20 kHz | Low-Pass auf alles, nach links wird es dumpfer |
 | Width | 0 … 100 % | 50 % | Stereobreite; unter 150 Hz bleibt es immer mono |
+| Octave | −2 … +2 | 0 | Verschiebt alle Noten um Oktaven. **In LMMS auf +1 stellen:** LMMS schickt Noten 12 Halbtöne tiefer, als die Piano-Roll zeigt (LMMS-Taste F1 kommt als F0 an) |
+| Host-Tempo | An/Aus | An | An: Tempo und Takt kommen vom Host. Aus (oder wenn der Host kein Tempo liefert): Es gilt BPM |
+| BPM | 60 … 220 | 160 | Tempo für Bounce Sync, Roll, Pad-LFO und Riser, wenn kein Host-Tempo genutzt wird |
+
+Octave, Host-Tempo und BPM stehen als kleine Felder in der Kopfzeile von GLOBAL: Ziehen ändert den Wert, ein Klick ohne Ziehen öffnet das Eingabefeld.
 
 ## Kick
 
@@ -122,7 +127,7 @@ Taste halten, dann steigt der Klang über die eingestellte Zahl Takte an, synchr
 ## Einstellungen als JSON (Kopieren / Einfügen)
 
 Oben rechts im Abschnitt GLOBAL gibt es zwei Knöpfe:
-- **KOPIEREN** legt Modus, globale Regler und die Regler des aktiven Modus als JSON in die Zwischenablage. So kannst du Claude genau zeigen, wie dein Sound eingestellt ist.
+- **KOPIEREN** legt Modus, globale Regler (mit Oktave und Tempo) und die Regler des aktiven Modus als JSON in die Zwischenablage. So kannst du Claude genau zeigen, wie dein Sound eingestellt ist.
 - **EINFÜGEN** liest JSON aus der Zwischenablage und stellt alle genannten Regler darauf ein. Regler, die im JSON nicht vorkommen, bleiben wie sie sind.
 
 Beispiel:
@@ -148,7 +153,7 @@ Beispiel:
 - **Unbekannte Schlüssel:** Die Statuszeile neben den Knöpfen meldet sie.
 
 **Kurznamen:**
-- **Global:** `mode volume drive tone width`
+- **Global:** `mode volume drive tone width octave tempo_host tempo_bpm`
 - **Kick:** `kick_start kick_tune kick_end kick_punch kick_body kick_length kick_cut kick_attack kick_click kick_drive kick_sync`
 - **Bass:** `bass_wave bass_sub bass_detune bass_cutoff bass_reso bass_slope bass_envamt bass_fdecay bass_adecay bass_bounce bass_btime bass_glide bass_roll`
 - **Hat:** `hat_mix hat_pitch hat_hp hat_lp hat_closed hat_open`

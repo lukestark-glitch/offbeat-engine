@@ -1,5 +1,7 @@
 // Werte als Text: Eingabe einer Zahl am Regler und Einstellungen als JSON (Kopieren/Einfügen).
-// Ohne DPF, damit offbeat-render dasselbe JSON lesen kann.
+// Ohne DPF, damit offbeat-render dasselbe JSON lesen kann. Gemeinsam für alle Offbeat-Plugins:
+// braucht nur kParams/kParamCount aus dem Params.hpp des jeweiligen Plugins.
+// Quelle: offbeat-engine/src/dsp/ParamText.* – in die anderen Repos kopiert, Änderungen dort zurückspielen.
 #pragma once
 
 #include "Params.hpp"
@@ -19,10 +21,7 @@ bool parseParamText(int p, const char* text, float& out);
 // Rückgabe: Anzahl gesetzter Werte; unbekannte oder ungültige Einträge landen in errors.
 int applyJson(const char* json, float values[kParamCount], bool changed[kParamCount], std::string& errors);
 
-// Modus, globale Regler und die Regler des aktiven Modus als JSON.
-std::string toJson(const float values[kParamCount]);
-
-// Parameter eines Modus in Anzeige-Reihenfolge; Rückgabe: Anzahl (höchstens 16).
-int modeParams(int mode, int out[16]);
+// Die genannten Parameter als JSON (Auswahl als Name, Schalter als true/false).
+std::string toJson(const float values[kParamCount], const int* list, int count);
 
 } // namespace offbeat

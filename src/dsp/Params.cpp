@@ -84,6 +84,9 @@ const ParamInfo kParams[kParamCount] = {
     { "Riser Siren Rate",  "riser_rate",     "",     0,      4,       2,       kFlagInt, kSirenNames },
 
     { "Kick Attack",       "kick_attack",    "ms",   0,      30,      1,       0 },
+    { "Octave",            "octave",         "",     -2,     2,       0,       kFlagInt },
+    { "Tempo from Host",   "tempo_host",     "",     0,      1,       1,       kFlagBool },
+    { "Tempo BPM",         "tempo_bpm",      "BPM",  60,     220,     160,     0 },
 };
 
 namespace {
@@ -136,6 +139,19 @@ const Preset kPresets[] = {
 // clang-format on
 
 const int kPresetCount = (int)(sizeof(kPresets) / sizeof(kPresets[0]));
+
+int modeParams(int mode, int out[16])
+{
+    // Erster Parameter jedes Modus; der Modus reicht bis zum ersten des nächsten.
+    static const int first[kModeCount + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kRiserSirenRate + 1 };
+    int n = 0;
+    for (int p = first[mode]; p < first[mode + 1]; ++p) {
+        out[n++] = p;
+        if (p == kKickCut) // nachträglich angehängt, gehört hinter "Cut"
+            out[n++] = kKickAttack;
+    }
+    return n;
+}
 
 void applyDefaults(float out[kParamCount])
 {
