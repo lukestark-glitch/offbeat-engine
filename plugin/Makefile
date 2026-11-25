@@ -16,7 +16,14 @@ DPF_BUILD_DIR = ../build/offbeat
 DPF_TARGET_DIR = ../bin
 include ../dpf/Makefile.plugins.mk
 
-BUILD_CXX_FLAGS += -std=gnu++17 -I../src/dsp
+BUILD_CXX_FLAGS += -std=gnu++17 -I../src/dsp -I$(DPF_BUILD_DIR)
+
+# Auto-Bild für die Oberfläche als C-Array einbetten
+$(DPF_BUILD_DIR)/CarImage.h: ../assets/car.png
+	-@mkdir -p $(DPF_BUILD_DIR)
+	cd ../assets && xxd -i car.png > $(abspath $@)
+
+$(DPF_BUILD_DIR)/OffbeatUI.cpp.o: $(DPF_BUILD_DIR)/CarImage.h
 
 TARGETS += vst3
 TARGETS += lv2

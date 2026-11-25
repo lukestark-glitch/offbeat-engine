@@ -4,6 +4,7 @@
 // Schalter (An/Aus) per Klick.
 #include "DistrhoUI.hpp"
 #include "Params.hpp"
+#include "CarImage.h" // aus assets/car.png erzeugt (xxd -i), siehe plugin/Makefile
 
 #include <cctype>
 #include <cmath>
@@ -54,6 +55,7 @@ public:
     {
         applyDefaults(values);
         loadSharedResources();
+        car = createImageFromMemory(car_png, car_png_len, IMAGE_GENERATE_MIPMAPS);
     }
 
 protected:
@@ -98,11 +100,12 @@ protected:
         drawPanel(kGlobalPanelY, 1, "GLOBAL", kBlue);
         for (int i = 0; i < 4; ++i)
             drawControl(kGlobals[i], i, kGlobalY, kBlue);
-        drawTicket(mode);
+        drawCar();
 
         char label[32];
         upper(kModeNames[mode], label, sizeof(label));
         drawPanel(kModePanelY, 2, label, accent);
+        drawModeInfo(mode);
         for (int p = kModeFirst[mode]; p < kModeFirst[mode + 1]; ++p) {
             const int n = p - kModeFirst[mode];
             drawControl(p, n % kCols, kModeY + (n / kCols) * kCellH, accent);
@@ -190,6 +193,7 @@ private:
     uint lastClickTime = 0;
     float dragY = 0, dragNorm = 0;
     bool dirty = true;
+    NanoImage car;
 
     int currentMode() const
     {
@@ -411,51 +415,37 @@ private:
         stroke();
     }
 
-    // Info-Ticket rechts neben den globalen Reglern (wie das Etikett auf einem Duftbaum).
-    void drawTicket(int mode)
+    // Auto rechts neben den globalen Reglern; ragt etwas über den Rand der Plakette hinaus.
+    // Die Lichtstreifen links laufen unter dem Width-Regler aus, deshalb vor den Reglern zeichnen.
+    void drawCar()
     {
-        const Color c = kModeColor[mode];
-        const float x = kGridX + 4 * kCellW + 10, y = kGlobalY + 4, w = 3 * kCellW - 20, h = kCellH - 16;
+        if (!car.isValid())
+            return;
+        const float w = 410, h = w * 384.0f / 1024.0f;
+        const float x = kUiWidth - w + 6, y = kGlobalPanelY + (kLabelH + kCellH) / 2.0f - h / 2 + 4;
         beginPath();
-        roundedRect(x, y, w, h, 6);
-        fillColor(withAlpha(c, 0.10f));
+        rect(x, y, w, h);
+        fillPaint(imagePattern(x, y, w, h, 0, car, 1.0f));
         fill();
-        strokeColor(c);
-        strokeWidth(1.5f);
-        stroke();
+    }
 
-        beginPath();
-        moveTo(x + 10, y + 26);
-        lineTo(x + w - 10, y + 26);
-        moveTo(x + 10, y + h - 24);
-        lineTo(x + w - 10, y + h - 24);
-        strokeColor(withAlpha(c, 0.6f));
-        strokeWidth(1);
-        stroke();
-
-        fontSize(10);
-        textLetterSpacing(1.5f);
-        textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
-        fillColor(kDim);
-        text(x + 10, y + 14, "OFFBEAT  x  HARD BOUNCE", nullptr);
-
-        char label[32];
-        upper(kModeNames[mode], label, sizeof(label));
-        fontSize(26);
-        textLetterSpacing(2);
-        fillColor(c);
-        text(x + 10, y + h / 2 + 1, label, nullptr);
-
-        char info[32];
-        std::snprintf(info, sizeof(info), "MODE %d/%d", mode + 1, kModeCount);
+    // Kleines Etikett rechts in der Kopfzeile des Modus-Abschnitts (Ticket-Stil).
+    void drawModeInfo(int mode)
+    {
+        char info[48];
+        std::snprintf(info, sizeof(info), "MODE %d/%d  \xc2\xb7  VST3 / LV2", mode + 1, kModeCount);
         fontSize(9);
         textLetterSpacing(1.5f);
-        fillColor(kDim);
-        text(x + 10, y + h - 12, info, nullptr);
-        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
-        text(x + w / 2, y + h - 12, "VST3 / LV2", nullptr);
         textAlign(ALIGN_RIGHT | ALIGN_MIDDLE);
-        text(x + w - 10, y + h - 12, "160 BPM", nullptr);
+        Rectangle<float> bounds;
+        const float x = kUiWidth - kMargin - 14, y = kModePanelY + 13;
+        textBounds(x, y, info, nullptr, bounds);
+        beginPath();
+        rect(bounds.getX() - 10, y - 6, bounds.getWidth() + 10, 12);
+        fillColor(kPlate);
+        fill();
+        fillColor(kDim);
+        text(x, y, info, nullptr);
         textLetterSpacing(0);
     }
 

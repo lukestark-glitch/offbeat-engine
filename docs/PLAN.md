@@ -43,7 +43,7 @@ Die Parameter-Tabelle ist die einzige Quelle für Plugin und Renderer. Neue Para
    `--check` für Kick, Hat, Riser und Mono-Bass bei Bass/Stab/Pad.
 
 ### Phase 3 – gebaut (PR #3)
-Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nach den Vibe-Bildern des Nutzers (Y2K-Rave/Tuning: Nachtblau, Chrom, Neon-Swoosh, Ticket-Etiketten, eine Farbe pro Modus), skaliert mit der Bildschirmauflösung.
+Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nach den Vibe-Bildern des Nutzers (Y2K-Rave/Tuning: Nachtblau, Chrom, Neon-Swoosh, Ticket-Etiketten, eine Farbe pro Modus, Auto-Bild des Nutzers in `assets/car.png`, beim Build per `xxd -i` eingebettet), skaliert mit der Bildschirmauflösung.
 - Oben die Modus-Reiter, darunter die globalen Regler (Volume, Drive, Tone, Width) und die Regler des aktiven Modus.
 - Bedienung: ziehen hoch/runter, mit Shift fein, Mausrad, Doppelklick setzt den Standardwert, An/Aus-Schalter per Klick.
 - Die Parameter-Liste (`Params.cpp`) liefert Namen, Bereiche und Einheiten, deshalb gibt es keine zweite Liste.
