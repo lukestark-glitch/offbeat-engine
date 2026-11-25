@@ -157,14 +157,21 @@ inline Spectrum spectrum(const std::vector<float>& x, int sr, size_t from, size_
 // Gibt 2 zurück, wenn dort kaum Energie liegt (unter −40 dB des Gesamtsignals).
 inline float correlation(const std::vector<float>& l, const std::vector<float>& r, float maxHz, int sr)
 {
-    const size_t len = std::min<size_t>(l.size(), 1 << 20);
+    // Nur der klingende Teil; für maxHz > 0 mit Hann-Fenster, sonst leckt Energie von knapp über maxHz
+    // (z. B. ein breiter Grundton bei 170 Hz) in die Bänder darunter. Ohne maxHz: ungefenstert (= Zeitbereich).
+    size_t first = 0, last = std::min(l.size(), r.size());
+    while (first < last && std::fabs(l[first]) + std::fabs(r[first]) < 1e-6f)
+        ++first;
+    while (last > first && std::fabs(l[last - 1]) + std::fabs(r[last - 1]) < 1e-6f)
+        --last;
+    const size_t len = std::min<size_t>(last - first, 1 << 20);
     size_t n = 1024;
     while (n < len)
         n <<= 1;
     std::vector<std::complex<double>> a(n), b(n);
-    for (size_t i = 0; i < len; ++i) { // Hann-Fenster: sonst leckt Energie von knapp über maxHz nach unten
-        const double w = 0.5 - 0.5 * std::cos(2.0 * M_PI * (double)i / (double)len);
-        a[i] = l[i] * w, b[i] = r[i] * w;
+    for (size_t i = 0; i < len; ++i) {
+        const double w = maxHz > 0.0f ? 0.5 - 0.5 * std::cos(2.0 * M_PI * (double)i / (double)len) : 1.0;
+        a[i] = l[first + i] * w, b[i] = r[first + i] * w;
     }
     fft(a);
     fft(b);
