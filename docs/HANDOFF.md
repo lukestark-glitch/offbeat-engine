@@ -7,6 +7,8 @@
 - Octave und Tempo-Fallback (Host-Tempo / BPM).
 - Gemeinsamer Baukasten für die Familie (`plugin/OffbeatKit.hpp` u. a.).
 
+- Familien-Übersicht `docs/FAMILIE.md` (Topline, Turbo und Hydraulics sind fertig).
+
 **Als Nächstes**
 - Sounds nach Hörtest feinjustieren.
 - In LMMS prüfen, ob das Host-Tempo ankommt; sonst Host-Tempo aus und BPM setzen.
