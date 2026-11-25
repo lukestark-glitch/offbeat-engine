@@ -84,7 +84,7 @@ const ParamInfo kParams[kParamCount] = {
     { "Riser Siren Rate",  "riser_rate",     "",     0,      4,       2,       kFlagInt, kSirenNames },
 
     { "Kick Attack",       "kick_attack",    "ms",   0,      30,      1,       0 },
-    { "Octave",            "octave",         "",     -2,     2,       0,       kFlagInt },
+    { "Octave",            "octave",         "",     -2,     2,       1,       kFlagInt }, // +1: gleicht den LMMS-Versatz aus
     { "Tempo from Host",   "tempo_host",     "",     0,      1,       1,       kFlagBool },
     { "Tempo BPM",         "tempo_bpm",      "BPM",  60,     220,     160,     0 },
 };

@@ -35,7 +35,7 @@ Danach Carla bzw. LMMS neu starten.
 ## LMMS 1.2.2: das Wichtigste
 
 - **Instrumente in Carla als LV2 laden.** VST3 meldet in Carla rund 2000 MIDI-CC-Parameter; LV2 zeigt nur die echten Regler. CLAP kann Carla 2.5 nicht.
-- **Noten-Versatz:** LMMS schickt Noten **12 Halbtöne tiefer**, als die Piano-Roll zeigt (LMMS-Taste A4 kommt als MIDI 45 an). Deshalb bei Engine und Topline den Regler **Octave auf +1** stellen. Dann klingt F1 wie F1 (Kick auf F1, Bass auf F2).
+- **Noten-Versatz:** LMMS schickt Noten **12 Halbtöne tiefer**, als die Piano-Roll zeigt (LMMS-Taste A4 kommt als MIDI 45 an). Engine und Topline haben darum den Regler **Octave mit Standard +1**. So klingt die LMMS-Taste F1 wie F1 (Kick auf F1, Bass auf F2). In anderen Hosts (z. B. Carla-Tastatur) Octave auf 0 stellen. Die Renderer (`--note`) verhalten sich wie LMMS.
 - **Tempo:** Laut seinen Symbolen ruft LMMS das Tempo und die Taktposition für Carla ab (`CarlaInstrument::handleGetTimeInfo`, `Song::getTempo`).
   - Engine, Topline und Hydraulics nutzen dieses Host-Tempo.
   - Kommt es nicht an, schaltest du **Host-Tempo aus** und stellst **BPM** von Hand. Das betrifft bei Hydraulics die Quelle „Host-Takt“.

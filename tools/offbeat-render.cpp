@@ -5,6 +5,8 @@
 //   offbeat-render --preset "Hat - Open Soft" --note A#3 --check
 //   offbeat-render --json sound.json --note F2     (JSON wie aus „Kopieren“ in der Oberfläche)
 //   offbeat-render --list
+//
+// --note ist die Taste wie in der LMMS-Piano-Roll: der Renderer schickt sie wie LMMS 12 Halbtöne tiefer.
 #include "Engine.hpp"
 #include "ParamText.hpp"
 #include "Measure.hpp"
@@ -175,10 +177,12 @@ int main(int argc, char** argv)
         engine.setTransport(true, (double)pos / sr * bpm / 60.0, bpm); // wie im Plugin: vor den Noten des Blocks
         while (next < events.size() && events[next].frame <= pos) {
             const Event& e = events[next++];
+            // Wie LMMS: die Taste der Piano-Roll kommt 12 Halbtöne tiefer an (Octave +1 gleicht das aus)
+            const int midi = e.note - 12 < 0 ? 0 : e.note - 12;
             if (e.on)
-                engine.noteOn(e.note, velocity);
+                engine.noteOn(midi, velocity);
             else
-                engine.noteOff(e.note);
+                engine.noteOff(midi);
         }
         uint32_t n = total - pos < block ? total - pos : block;
         if (next < events.size() && events[next].frame < pos + n)

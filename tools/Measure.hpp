@@ -162,8 +162,10 @@ inline float correlation(const std::vector<float>& l, const std::vector<float>& 
     while (n < len)
         n <<= 1;
     std::vector<std::complex<double>> a(n), b(n);
-    for (size_t i = 0; i < len; ++i)
-        a[i] = l[i], b[i] = r[i];
+    for (size_t i = 0; i < len; ++i) { // Hann-Fenster: sonst leckt Energie von knapp über maxHz nach unten
+        const double w = 0.5 - 0.5 * std::cos(2.0 * M_PI * (double)i / (double)len);
+        a[i] = l[i] * w, b[i] = r[i] * w;
+    }
     fft(a);
     fft(b);
     double lr = 0, ll = 0, rr = 0, total = 0;
