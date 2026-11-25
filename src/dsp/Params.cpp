@@ -42,8 +42,8 @@ const ParamInfo kParams[kParamCount] = {
 namespace {
 using V = Preset::Value;
 
-const V kickHard[]  = { { kMode, kModeKick }, { kKickBody, 70 } }; // Tonhöhe mittig in der Abnahme
-const V kickSoft[]  = { { kMode, kModeKick }, { kKickDrive, 0.25f }, { kKickClick, 0.08f },
+const V kickHard[]  = { { kMode, kModeKick }, { kKickBody, 70 }, { kKickDrive, 0.85f } }; // Tonhöhe mittig in der Abnahme
+const V kickSoft[]  = { { kMode, kModeKick }, { kKickDrive, 0.6f }, { kKickClick, 0.08f },
                         { kKickStart, 240 }, { kKickCut, 40 } };
 const V bassF2[]    = { { kMode, kModeBass } };
 const V bassRubber[]= { { kMode, kModeBass }, { kBassBounce, 14 }, { kBassBounceTime, 35 },

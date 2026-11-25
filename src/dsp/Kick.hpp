@@ -52,7 +52,9 @@ public:
         const float hz = fEnd + a1 * e1 + a2 * e2;
         e1 *= d1;
         e2 *= d2;
-        float y = saturate(osc.process(hz, sr), drive);
+        // Kick Drive 0..1 → Verstärkung 1..64 vor tanh: von rund bis fast Rechteck.
+        const float g = std::exp2(6.0f * drive);
+        float y = std::tanh(g * osc.process(hz, sr)) / std::tanh(g);
 
         // Hüllkurve: 1 ms Einblendung, Halten, Cosinus-Abbruch über "Cut" bis "Length".
         float amp = 1.0f;
