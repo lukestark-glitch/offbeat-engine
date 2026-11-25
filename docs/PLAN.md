@@ -64,7 +64,7 @@ Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nac
 ## Offene Fragen
 - **Octave-Standard:** Der Nutzer hat entschieden: **+1** (gleicht LMMS aus). Gespeicherte Projekte behalten ihren gespeicherten Wert. Der Renderer schickt `--note` wie LMMS 12 Halbtöne tiefer.
 - **Tempo in LMMS:** LMMS 1.2.2 gibt laut seinen Symbolen Tempo und Taktposition an Carla weiter (`handleGetTimeInfo`, `Song::getTempo`, `getBeatWithinBar`). Ob Carla Rack das an das Plugin durchreicht, kann nur ein Test in LMMS zeigen (Checkliste). Fallback ist eingebaut.
-- **Repo-Ordner:** Lokal heißt der Ordner noch `offbeat-synth` (nur der Remote zeigt auf offbeat-engine), damit die laufende Sitzung und ihre Pfade nicht brechen. Umbenennen ist jederzeit gefahrlos möglich.
+- **Repo-Ordner:** Lokal heißt der Ordner jetzt `~/Developer/offbeat-engine` (wie das Repo; vom Nutzer gewünscht). Die LV2-URI enthält weiterhin `offbeat-synth` und bleibt so.
 - **Kick Attack 0 ms:** Die Kick startet dann hart. Die Abnahme-Prüfung „weiche Einblendung“ schlägt bei 0 ms bewusst fehl; ab etwa 0,5 ms besteht sie.
 - **JSON:** %-Regler stehen im JSON als 0…1 (wie im Plugin), nicht als Prozent. Nicht genannte Regler bleiben unverändert. Den Knopf KOPIEREN habe ich dazugebaut, damit man Claude den aktuellen Stand geben kann.
 - **Tastatur im Host:** Ob Tippen ankommt, hängt davon ab, ob der Host dem Plugin-Fenster die Tastatur gibt (Carla-Bridge-Fenster: sollte gehen).
