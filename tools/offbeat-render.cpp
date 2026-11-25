@@ -3,8 +3,10 @@
 //   offbeat-render --preset "Kick - Hard Bounce" --note F1 --bpm 160 --out kick.wav --check
 //   offbeat-render --mode bass --note F2 --length 150 --set bass_bounce=12
 //   offbeat-render --preset "Hat - Open Soft" --note A#3 --check
+//   offbeat-render --json sound.json --note F2     (JSON wie aus „Kopieren“ in der Oberfläche)
 //   offbeat-render --list
 #include "Engine.hpp"
+#include "ParamText.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -207,7 +209,7 @@ static float correlation(const std::vector<float>& l, const std::vector<float>& 
 static void usage()
 {
     std::puts("offbeat-render [--preset NAME|NR] [--mode kick|bass|hat|stab|pad|riser] [--note F1|29[@ms]]... [--velocity 0-127]\n"
-              "               [--bpm 160] [--length MS] [--tail MS] [--sr 48000] [--set symbol=wert]...\n"
+              "               [--bpm 160] [--length MS] [--tail MS] [--sr 48000] [--json datei] [--set symbol=wert]...\n"
               "               [--out datei.wav] [--check] [--list]");
 }
 
@@ -217,6 +219,7 @@ int main(int argc, char** argv)
     std::vector<std::pair<int, float>> notes; // Note, Start in ms
     float bpm = 160.0f, lengthMs = 300.0f, tailMs = 300.0f;
     const char* out = nullptr;
+    const char* jsonFile = nullptr;
     bool check = false;
     std::vector<std::pair<int, float>> overrides;
 
@@ -265,6 +268,8 @@ int main(int argc, char** argv)
             sr = std::atoi(v);
         else if (a == "--out")
             out = v;
+        else if (a == "--json")
+            jsonFile = v;
         else if (a == "--set") {
             const std::string kv = v;
             const size_t eq = kv.find('=');
@@ -294,6 +299,20 @@ int main(int argc, char** argv)
     applyPreset(preset, values);
     if (mode >= 0)
         values[kMode] = (float)mode;
+    if (jsonFile) {
+        std::string json, errors;
+        if (FILE* f = std::fopen(jsonFile, "rb")) {
+            char buf[4096];
+            for (size_t r; (r = std::fread(buf, 1, sizeof(buf), f)) > 0;)
+                json.append(buf, r);
+            std::fclose(f);
+        }
+        bool changed[kParamCount] = {};
+        const int n = applyJson(json.c_str(), values, changed, errors);
+        std::printf("JSON: %d Werte gesetzt%s%s\n", n, errors.empty() ? "" : "; ", errors.c_str());
+        if (n == 0)
+            return 2;
+    }
     for (const auto& o : overrides)
         values[o.first] = o.second;
 

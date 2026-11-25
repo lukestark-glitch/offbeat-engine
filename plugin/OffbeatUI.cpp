@@ -1,15 +1,18 @@
 // Eigene Oberfläche (Phase 3): Modus-Reiter, globale Regler und die Regler des aktiven Modus.
 // Look: Y2K-Rave/Tuning – Nachtblau, Chrom, Neon-Swoosh; jeder Modus hat seine eigene Farbe.
 // Bedienung: ziehen (hoch/runter), Shift = fein, Mausrad, Doppelklick = Standardwert,
-// Schalter (An/Aus) per Klick.
+// Schalter (An/Aus) per Klick. Klick auf den Wert (oder Rechtsklick) = Zahl eintippen.
+// KOPIEREN/EINFÜGEN: Einstellungen als JSON über die Zwischenablage (Format: docs/REGLER.md).
 #include "DistrhoUI.hpp"
-#include "Params.hpp"
+#include "ParamText.hpp"
 #include "CarImage.h" // aus assets/car.png erzeugt (xxd -i), siehe plugin/Makefile
 
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <chrono>
 #include <cstring>
+#include <string>
 
 START_NAMESPACE_DISTRHO
 
@@ -22,8 +25,6 @@ constexpr int kGlobalPanelY = 104, kModePanelY = 252, kLabelH = 22;
 constexpr int kGlobalY = kGlobalPanelY + kLabelH, kModeY = kModePanelY + kLabelH;
 constexpr float kPi = 3.14159265f;
 
-// Erster Parameter jedes Modus; der Modus reicht bis zum ersten des nächsten.
-const int kModeFirst[kModeCount + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kParamCount };
 const int kGlobals[4] = { kVolume, kDrive, kTone, offbeat::kWidth };
 
 // Neon-Farbe pro Modus (wie die verschiedenfarbigen Duftbäume): Kick, Bass, Hat, Stab, Pad, Riser.
@@ -106,18 +107,40 @@ protected:
         upper(kModeNames[mode], label, sizeof(label));
         drawPanel(kModePanelY, 2, label, accent);
         drawModeInfo(mode);
-        for (int p = kModeFirst[mode]; p < kModeFirst[mode + 1]; ++p) {
-            const int n = p - kModeFirst[mode];
-            drawControl(p, n % kCols, kModeY + (n / kCols) * kCellH, accent);
+        int list[16];
+        const int count = modeParams(mode, list);
+        for (int n = 0; n < count; ++n)
+            drawControl(list[n], n % kCols, kModeY + (n / kCols) * kCellH, accent);
+
+        for (int b = 0; b < 2; ++b)
+            drawButton(b);
+        if (!status.empty() && Clock::now() < statusUntil) {
+            fontSize(11);
+            textAlign(ALIGN_RIGHT | ALIGN_MIDDLE);
+            fillColor(kText);
+            float bx, by, bw, bh;
+            buttonRect(0, bx, by, bw, bh);
+            text(bx - 12, by + bh / 2, status.c_str(), nullptr);
         }
     }
 
     bool onMouse(const MouseEvent& ev) override
     {
-        if (ev.button != 1)
-            return false;
         const float s = getWidth() / (float)kUiWidth;
         const float x = ev.pos.getX() / s, y = ev.pos.getY() / s;
+
+        if (ev.press && editParam >= 0) { // Klick irgendwohin übernimmt die Eingabe
+            commitEdit();
+            return true;
+        }
+        if (ev.press && ev.button == kMouseButtonRight) { // Rechtsklick: Zahl eintippen
+            const int p = paramAt(x, y);
+            if (p >= 0)
+                startEdit(p);
+            return p >= 0;
+        }
+        if (ev.button != kMouseButtonLeft)
+            return false;
 
         if (!ev.press) {
             if (dragParam >= 0)
@@ -135,9 +158,23 @@ protected:
             }
         }
 
-        const int p = paramAt(x, y);
+        for (int b = 0; b < 2; ++b) {
+            float bx, by, bw, bh;
+            buttonRect(b, bx, by, bw, bh);
+            if (x >= bx && x < bx + bw && y >= by && y < by + bh) {
+                b == 0 ? copySettings() : pasteSettings();
+                return true;
+            }
+        }
+
+        float cellY;
+        const int p = paramAt(x, y, &cellY);
         if (p < 0)
             return false;
+        if (cellY >= 82) { // Klick auf den Wert unter dem Regler
+            startEdit(p);
+            return true;
+        }
         const ParamInfo& info = kParams[p];
         if (info.flags & kFlagBool) {
             setValue(p, values[p] > 0.5f ? 0.0f : 1.0f, true);
@@ -187,8 +224,38 @@ protected:
         return true;
     }
 
+    bool onKeyboard(const KeyboardEvent& ev) override
+    {
+        if (editParam < 0 || !ev.press)
+            return false;
+        if (ev.key == kKeyEnter)
+            commitEdit();
+        else if (ev.key == kKeyEscape)
+            editParam = -1;
+        else if ((ev.key == kKeyBackspace || ev.key == kKeyDelete) && !editText.empty())
+            editText.pop_back();
+        dirty = true;
+        repaint();
+        return true;
+    }
+
+    bool onCharacterInput(const CharacterInputEvent& ev) override
+    {
+        if (editParam < 0)
+            return false;
+        if (ev.character >= 32 && ev.character != 127 && editText.size() < 20)
+            editText += ev.string;
+        dirty = true;
+        repaint();
+        return true;
+    }
+
 private:
+    using Clock = std::chrono::steady_clock;
     float values[kParamCount];
+    int editParam = -1;
+    std::string editText, status;
+    Clock::time_point statusUntil;
     int dragParam = -1, lastClickParam = -1;
     uint lastClickTime = 0;
     float dragY = 0, dragNorm = 0;
@@ -240,18 +307,112 @@ private:
     }
 
     // Parameter unter der Maus: globale Reihe oder Raster des aktiven Modus.
-    int paramAt(float x, float y) const
+    // cellY: Höhe innerhalb der Zelle (Regler oben, Name und Wert unten).
+    int paramAt(float x, float y, float* cellY = nullptr) const
     {
         const int col = (int)((x - kGridX) / kCellW);
         if (x < kGridX || col >= kCols)
             return -1;
-        if (y >= kGlobalY && y < kGlobalY + kCellH)
+        if (y >= kGlobalY && y < kGlobalY + kCellH) {
+            if (cellY)
+                *cellY = y - kGlobalY;
             return col < 4 ? kGlobals[col] : -1;
+        }
         if (y < kModeY)
             return -1;
-        const int mode = currentMode();
-        const int p = kModeFirst[mode] + (int)((y - kModeY) / kCellH) * kCols + col;
-        return p < kModeFirst[mode + 1] ? p : -1;
+        const int row = (int)((y - kModeY) / kCellH), n = row * kCols + col;
+        if (cellY)
+            *cellY = y - kModeY - row * kCellH;
+        int list[16];
+        return n < modeParams(currentMode(), list) ? list[n] : -1;
+    }
+
+    void startEdit(int p)
+    {
+        if (dragParam >= 0)
+            editParameter(dragParam, false);
+        dragParam = -1;
+        editParam = p;
+        editText.clear();
+        dirty = true;
+        repaint();
+    }
+
+    void commitEdit()
+    {
+        const int p = editParam;
+        editParam = -1;
+        float v;
+        if (!editText.empty() && parseParamText(p, editText.c_str(), v))
+            setValue(p, v, true);
+        else if (!editText.empty())
+            showStatus("Ungültige Eingabe");
+        dirty = true;
+        repaint();
+    }
+
+    void showStatus(const std::string& text)
+    {
+        status = text;
+        statusUntil = Clock::now() + std::chrono::seconds(4);
+        dirty = true;
+        repaint();
+    }
+
+    static void buttonRect(int b, float& x, float& y, float& w, float& h)
+    {
+        w = 92, h = 20, y = kGlobalPanelY + 3;
+        x = kUiWidth - kMargin - 12 - (2 - b) * (w + 6) + 6;
+    }
+
+    void copySettings()
+    {
+        const std::string json = toJson(values);
+        if (getWindow().setClipboard("text/plain", json.c_str(), json.size()))
+            showStatus("Einstellungen kopiert");
+        else
+            showStatus("Kopieren ging nicht");
+    }
+
+    void pasteSettings()
+    {
+        size_t size = 0;
+        const char* data = (const char*)getWindow().getClipboard(size);
+        if (!data || !size) {
+            showStatus("Zwischenablage ist leer");
+            return;
+        }
+        const std::string json(data, size);
+        float next[kParamCount];
+        std::memcpy(next, values, sizeof(next));
+        bool changed[kParamCount] = {};
+        std::string errors;
+        const int n = applyJson(json.c_str(), next, changed, errors);
+        for (int p = 0; p < kParamCount; ++p)
+            if (changed[p])
+                setValue(p, next[p], true);
+        char msg[64];
+        std::snprintf(msg, sizeof(msg), "%d Werte gesetzt", n);
+        showStatus(n == 0 ? "Kein gültiges JSON" : errors.empty() ? msg : std::string(msg) + " (" + errors + ")");
+    }
+
+    void drawButton(int b)
+    {
+        float x, y, w, h;
+        buttonRect(b, x, y, w, h);
+        beginPath();
+        roundedRect(x, y, w, h, h / 2);
+        fillColor(kPlate);
+        fill();
+        strokeColor(kBlue);
+        strokeWidth(1.5f);
+        stroke();
+        fontSize(10);
+        textLetterSpacing(1.5f);
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+        fillColor(kText);
+        text(x + w / 2, y + h / 2 + 1, b == 0 ? "KOPIEREN" : "EINF\xc3\x9cGEN", nullptr);
+        textLetterSpacing(0);
     }
 
     void formatValue(int p, char* buf, size_t size) const
@@ -515,7 +676,7 @@ private:
 
         // Name ohne Modus-Vorsilbe ("Kick Start Pitch" → "START PITCH")
         const char* name = info.name;
-        if (p >= kModeFirst[0])
+        if (p >= kKickStart)
             if (const char* sp = std::strchr(name, ' '))
                 name = sp + 1;
         char label[32];
@@ -527,6 +688,19 @@ private:
         text(cx, top + 76, label, nullptr);
         textLetterSpacing(0);
 
+        if (p == editParam) { // Eingabefeld mit Cursor
+            beginPath();
+            roundedRect(cx - 44, top + 84, 88, 19, 4);
+            fillColor(kNight);
+            fill();
+            strokeColor(c);
+            strokeWidth(1.5f);
+            stroke();
+            fontSize(13);
+            fillColor(kText);
+            text(cx, top + 93, (editText + "|").c_str(), nullptr);
+            return;
+        }
         char buf[32];
         formatValue(p, buf, sizeof(buf));
         fontSize(13);

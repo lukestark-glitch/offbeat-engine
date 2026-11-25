@@ -49,7 +49,15 @@ Eigene Oberfläche mit DPF + NanoVG (`plugin/OffbeatUI.cpp`), 860×512, Look nac
 - Die Parameter-Liste (`Params.cpp`) liefert Namen, Bereiche und Einheiten, deshalb gibt es keine zweite Liste.
 - LV2 ist jetzt eine einzelne Datei `offbeat.dylib` (DSP + UI). DPF warnt dabei wegen „direct access“; das ist harmlos, weil die UI nur über Parameter mit dem DSP spricht.
 
+### Nach Phase 3 (PR #4)
+- Neuer Parameter **Kick Attack** (0–30 ms, Standard 1 ms, Cosinus-Einblendung). Er ist hinten an die Parameter-Liste angehängt (Index 64), damit gespeicherte Projekte ihre Nummern behalten. In der Oberfläche steht er hinter „Cut“.
+- **Zahleneingabe** am Regler (Klick auf den Wert oder Rechtsklick).
+- **JSON** kopieren und einfügen über die Zwischenablage; `offbeat-render --json` liest dasselbe Format (`src/dsp/ParamText.cpp`).
+
 ## Offene Fragen
+- **Kick Attack 0 ms:** Die Kick startet dann hart. Die Abnahme-Prüfung „weiche Einblendung“ schlägt bei 0 ms bewusst fehl; ab etwa 0,5 ms besteht sie.
+- **JSON:** %-Regler stehen im JSON als 0…1 (wie im Plugin), nicht als Prozent. Nicht genannte Regler bleiben unverändert. Den Knopf KOPIEREN habe ich dazugebaut, damit man Claude den aktuellen Stand geben kann.
+- **Tastatur im Host:** Ob Tippen ankommt, hängt davon ab, ob der Host dem Plugin-Fenster die Tastatur gibt (Carla-Bridge-Fenster: sollte gehen).
 - **Oberfläche:** Farben pro Modus und das eigene Offbeat-Logo habe ich selbst gewählt (inspiriert, nicht kopiert), alles leicht änderbar. Die Oberfläche hat keine Preset-Auswahl; Presets wählt man weiter über den Host (Carla „Programs“).
 
 - **Bass-Decay-Kurve:** „Amp Decay“ ist als Zeit bis −40 dB umgesetzt (exponentiell). Falls

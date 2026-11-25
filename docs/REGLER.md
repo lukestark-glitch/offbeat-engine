@@ -7,6 +7,7 @@ Oben in der Oberfläche wählst du den **Modus**. Darunter liegen die vier **glo
 - Das Mausrad geht auch.
 - Doppelklick setzt den Standardwert.
 - An/Aus-Schalter schaltest du per Klick.
+- **Klick auf den Wert** unter einem Regler (oder Rechtsklick auf den Regler) öffnet ein Eingabefeld. Zahl eintippen und Enter drücken, Esc bricht ab. Eingegeben wird in der Einheit der Anzeige: Prozent bei %-Reglern, `1.5k` für 1,5 kHz, Namen wie `Moll` und `an`/`aus` gehen auch.
 
 Presets wählst du in Carla unter „Programs“.
 
@@ -31,6 +32,7 @@ Presets wählst du in Carla unter „Programs“.
 | Body Time | 20 … 200 ms | 75 ms | Wie lange der zweite, langsame Teil braucht, also der „Bauch“ der Kick |
 | Length | 60 … 600 ms | 185 ms | Gesamtlänge der Kick |
 | Cut | 5 … 60 ms | 30 ms | Wie weich die Kick am Ende abgeschnitten wird |
+| Attack | 0 … 30 ms | 1 ms | Weiche Einblendung am Anfang; 0 = harter Start mit Knack, länger = weicher |
 | Click | 0 … 100 % | 20 % | Lautstärke des Klicks am Anfang |
 | Drive | 0 … 100 % | 50 % | Verzerrung der Kick; hoch = härter, mehr Obertöne |
 | Bounce Sync | An/Aus | Aus | An: Die Länge passt sich der Host-BPM an und endet kurz vor dem Offbeat |
@@ -116,6 +118,45 @@ Taste halten, dann steigt der Klang über die eingestellte Zahl Takte an, synchr
 | Volume Rise | 0 … 100 % | 100 % | Wie stark es lauter wird (0 = gleich laut) |
 | Siren Depth | 0 … 12 st | 0 st | Sirenen-Effekt: Tonhöhe schwingt auf und ab |
 | Siren Rate | 1/1 … 1/16 | 1/4 | Tempo der Sirene, synchron zur Host-BPM |
+
+## Einstellungen als JSON (Kopieren / Einfügen)
+
+Oben rechts im Abschnitt GLOBAL gibt es zwei Knöpfe:
+- **KOPIEREN** legt Modus, globale Regler und die Regler des aktiven Modus als JSON in die Zwischenablage. So kannst du Claude genau zeigen, wie dein Sound eingestellt ist.
+- **EINFÜGEN** liest JSON aus der Zwischenablage und stellt alle genannten Regler darauf ein. Regler, die im JSON nicht vorkommen, bleiben wie sie sind.
+
+Beispiel:
+
+```json
+{
+  "mode": "Kick",
+  "volume": -3,
+  "kick_start": 260,
+  "kick_attack": 3,
+  "kick_drive": 0.8,
+  "kick_sync": true
+}
+```
+
+**Regeln für das JSON:**
+- **Schlüssel** sind die Kurznamen der Regler (`symbol`, Liste unten).
+- **Zahlen** stehen in der Einheit des Plugins, also Hz, ms, dB oder st.
+- **%-Regler** werden als **0 … 1** geschrieben, 0.8 bedeutet also 80 %.
+- **Auswahl-Regler** gehen als Name oder Nummer, z. B. `"mode": "Bass"` oder `"stab_chord": "Moll"`.
+- **Schalter** gehen als `true`/`false` oder `1`/`0`.
+- **Zu große oder zu kleine Werte** werden auf den erlaubten Bereich begrenzt.
+- **Unbekannte Schlüssel:** Die Statuszeile neben den Knöpfen meldet sie.
+
+**Kurznamen:**
+- **Global:** `mode volume drive tone width`
+- **Kick:** `kick_start kick_tune kick_end kick_punch kick_body kick_length kick_cut kick_attack kick_click kick_drive kick_sync`
+- **Bass:** `bass_wave bass_sub bass_detune bass_cutoff bass_reso bass_slope bass_envamt bass_fdecay bass_adecay bass_bounce bass_btime bass_glide bass_roll`
+- **Hat:** `hat_mix hat_pitch hat_hp hat_lp hat_closed hat_open`
+- **Stab:** `stab_voices stab_detune stab_mix stab_cutoff stab_reso stab_envamt stab_fdecay stab_attack stab_decay stab_sustain stab_release stab_hoover stab_chord stab_glide`
+- **Pad:** `pad_detune pad_tri pad_cutoff pad_lfo_rate pad_lfo_depth pad_attack pad_release pad_chorus`
+- **Riser:** `riser_bars riser_mix riser_start riser_end riser_pitch riser_vol riser_siren riser_rate`
+
+Das gleiche JSON versteht auch der Offline-Renderer: `bin/offbeat-render --json sound.json --note F1`.
 
 ## Presets
 
