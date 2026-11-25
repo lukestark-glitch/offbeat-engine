@@ -13,14 +13,14 @@ START_NAMESPACE_DISTRHO
 using namespace offbeat;
 
 namespace {
-constexpr int kWidth = 810, kHeight = 480;
+constexpr int kUiWidth = 810, kUiHeight = 480;
 constexpr int kCellW = 110, kCellH = 118, kCols = 7, kMargin = 20;
 constexpr int kHeaderH = 56, kGlobalY = 84, kModeY = 236;
 constexpr float kPi = 3.14159265f;
 
 // Erster Parameter jedes Modus; der Modus reicht bis zum ersten des nächsten.
 const int kModeFirst[kModeCount + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kParamCount };
-const int kGlobals[4] = { kVolume, kDrive, kTone, kWidth };
+const int kGlobals[4] = { kVolume, kDrive, kTone, offbeat::kWidth };
 
 const Color kBack(22, 23, 27), kPanel(32, 34, 40), kTrack(58, 61, 70), kText(225, 226, 230),
     kDim(140, 143, 152), kAccent(255, 122, 26);
@@ -29,7 +29,7 @@ const Color kBack(22, 23, 27), kPanel(32, 34, 40), kTrack(58, 61, 70), kText(225
 class OffbeatUI : public UI {
 public:
     OffbeatUI()
-        : UI(kWidth, kHeight, true)
+        : UI(kUiWidth, kUiHeight, true)
     {
         applyDefaults(values);
         loadSharedResources();
@@ -52,12 +52,12 @@ protected:
 
     void onNanoDisplay() override
     {
-        const float s = getWidth() / (float)kWidth; // DPF skaliert das Fenster, wir die Zeichnung
+        const float s = getWidth() / (float)kUiWidth; // DPF skaliert das Fenster, wir die Zeichnung
         scale(s, s);
         fontFace(NANOVG_DEJAVU_SANS_TTF);
 
         beginPath();
-        rect(0, 0, kWidth, kHeight);
+        rect(0, 0, kUiWidth, kUiHeight);
         fillColor(kBack);
         fill();
 
@@ -95,7 +95,7 @@ protected:
     {
         if (ev.button != 1)
             return false;
-        const float s = getWidth() / (float)kWidth;
+        const float s = getWidth() / (float)kUiWidth;
         const float x = ev.pos.getX() / s, y = ev.pos.getY() / s;
 
         if (!ev.press) {
@@ -140,7 +140,7 @@ protected:
     {
         if (dragParam < 0)
             return false;
-        const float s = getWidth() / (float)kWidth;
+        const float s = getWidth() / (float)kUiWidth;
         const float y = ev.pos.getY() / s;
         const float range = (ev.mod & kModifierShift) ? 1000.0f : 200.0f;
         dragNorm = std::fmin(1.0f, std::fmax(0.0f, dragNorm + (dragY - y) / range));
@@ -151,7 +151,7 @@ protected:
 
     bool onScroll(const ScrollEvent& ev) override
     {
-        const float s = getWidth() / (float)kWidth;
+        const float s = getWidth() / (float)kUiWidth;
         const int p = paramAt(ev.pos.getX() / s, ev.pos.getY() / s);
         if (p < 0 || ev.delta.getY() == 0.0)
             return false;
@@ -212,7 +212,7 @@ private:
     static void tabRect(int m, float& x, float& y, float& w, float& h)
     {
         w = 84, h = 30, y = (kHeaderH - h) / 2;
-        x = kWidth - kMargin - (kModeCount - m) * (w + 6) + 6;
+        x = kUiWidth - kMargin - (kModeCount - m) * (w + 6) + 6;
     }
 
     // Parameter unter der Maus: globale Reihe oder Raster des aktiven Modus.
