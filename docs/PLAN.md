@@ -39,9 +39,6 @@ Eigene Oberfläche.
 
 ## Offene Fragen
 
-- **GitHub-Anmeldung:** Das `gh`-Token ist ungültig, und es gibt keine HTTPS-Zugangsdaten für
-  git. Remote ist gesetzt (`lukestark-glitch/offbeat-synth`), Commits liegen lokal. Bitte
-  `gh auth login -h github.com` ausführen, danach pushen und den PR öffnen.
 - **Bass-Decay-Kurve:** „Amp Decay“ ist als Zeit bis −40 dB umgesetzt (exponentiell). Falls
   sich der Bass zu „plucky“ anhört, wäre eine Hold-Phase eine Alternative.
 - **Bounce-Pitch-Kurve:** fällt exponentiell und erreicht den Zielton nach „Bounce Time“ zu ~95 %.
