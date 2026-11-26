@@ -101,6 +101,10 @@ protected:
         int bar = -1;    // Schalter Ausschnitt: aus = 1 Schlag, an = 1 Takt
         int active = -1; // Anzeige vom DSP: welche Ebene gerade spielt
         int bpm = -1;    // Anzeige vom DSP: aktuelles Tempo (für die Schlag- und Offbeat-Linien)
+        const char* barLabels[2] = { "1 Schlag", "1 Takt" }; // Beschriftung des Umschalters (aus / an)
+        int beats[2] = { 1, 4 };   // gezeigte Schläge (aus / an), für die Schlag- und Offbeat-Linien
+        bool allButton = true;     // „Alle“-Knopf bei mehreren Ebenen
+        bool offbeatLines = true;  // Offbeat-Linien zeichnen
     };
     struct PreviewLayer {
         std::string name;
@@ -500,10 +504,10 @@ protected:
         stroke();
 
         const bool bar = pp.bar >= 0 && values[pp.bar] >= 0.5f;
-        const int beats = bar ? 4 : 1;
+        const int beats = pp.beats[bar ? 1 : 0];
         const float mid = wy + wh / 2, amp = wh / 2 - 4;
         for (int b = 0; b < beats; ++b) { // Schlag- (schwach) und Offbeat-Linien (hell)
-            for (int half = 0; half < 2; ++half) {
+            for (int half = 0; half < (pp.offbeatLines ? 2 : 1); ++half) {
                 const float lx = wx + ww * ((float)b + 0.5f * half) / beats;
                 if (lx <= wx + 1)
                     continue;
@@ -519,7 +523,8 @@ protected:
         textLetterSpacing(1);
         textAlign(ALIGN_LEFT | ALIGN_TOP);
         fillColor(kit::withAlpha(c, 0.8f));
-        text(wx + ww / beats * 0.5f + 4, wy + 4, "OFFBEAT", nullptr);
+        if (pp.offbeatLines)
+            text(wx + ww / beats * 0.5f + 4, wy + 4, "OFFBEAT", nullptr);
         textLetterSpacing(0);
 
         auto envelope = [&](const std::vector<float>& x, std::vector<float>& lo, std::vector<float>& hi) {
@@ -588,11 +593,11 @@ protected:
         for (int i = 0; i < n; ++i)
             pill(kButtonPreview - i, bx + (i % 2) * (bw + gap), y + (i / 2) * (bh + gap), bw, bh, previewLayers[i].name.c_str(),
                  layerColor(c, i), playing == i + 1);
-        if (n > 1)
+        if (n > 1 && pp.allButton)
             pill(kButtonPreviewAll, bx + (n % 2) * (bw + gap), y + (n / 2) * (bh + gap), bw, bh, "Alle", c, playing == 4);
         const float rowY = y + h - bh;
         pill(kButtonPreviewLoop, bx, rowY, bw, bh, "Loop", c, pp.loop >= 0 && values[pp.loop] >= 0.5f);
-        pill(kButtonPreviewRange, bx + bw + gap, rowY, bw, bh, bar ? "1 Takt" : "1 Schlag", c, false);
+        pill(kButtonPreviewRange, bx + bw + gap, rowY, bw, bh, pp.barLabels[bar ? 1 : 0], c, bar);
     }
 
     // Bildschirm-Tastatur (nur in der Standalone-App sinnvoll): zwei Oktaven ab C der Tastatur-Oktave,
