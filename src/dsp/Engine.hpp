@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Bass.hpp"
+#include "Glue.hpp"
 #include "Hat.hpp"
 #include "Kick.hpp"
 #include "Poly.hpp"
@@ -35,11 +36,8 @@ private:
     float params[kParamCount];
     float sr = 48000.0f;
     double beatPos = 0.0, bpm = 160.0;
-    int transpose(int note) const
-    {
-        const int n = note + 12 * (int)params[kOctave];
-        return n < 0 ? 0 : (n > 127 ? 127 : n);
-    }
+    static int clampNote(int n) { return n < 0 ? 0 : (n > 127 ? 127 : n); }
+    int transpose(int note) const { return clampNote(note + 12 * (int)params[kOctave]); }
     bool hostPlaying = false, started = false;
     int64_t lastSixteenth = -1;
 
@@ -58,6 +56,13 @@ private:
     Noise rnd;
     RiserVoice riser;
     Chorus chorus;
+
+    // Kick+Bass: der Bass startet eine Achtel nach der Kick und endet kurz vor dem nächsten Schlag
+    float comboParams[kParamCount]; // Kopie mit den Combo-Werten für Bounce (pro Block)
+    int64_t comboBassIn = -1, comboBassOff = -1; // Samples bis Bass-Start bzw. -Ende (−1 = nichts geplant)
+    int comboNote = 0;
+    float comboVel = 1.0f;
+    BounceGlue glue;
 
     Svf toneL, toneR;
     Svf widthHp[4]; // Hochpass 48 dB/Okt. aufs Seitensignal: unter 150 Hz bleibt alles mono

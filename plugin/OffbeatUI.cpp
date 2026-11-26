@@ -16,9 +16,9 @@ constexpr float kGlobalPanelY = 104, kModePanelY = 252;
 
 const int kGlobals[4] = { kVolume, kDrive, kTone, offbeat::kWidth };
 
-// Neon-Farbe pro Modus (wie die verschiedenfarbigen Duftbäume): Kick, Bass, Hat, Stab, Pad, Riser.
+// Neon-Farbe pro Modus (wie die verschiedenfarbigen Duftbäume): Kick, Bass, Hat, Stab, Pad, Riser, Kick+Bass.
 const Color kModeColor[kModeCount] = { Color(70, 95, 255), Color(120, 240, 60), Color(60, 225, 235),
-    Color(255, 80, 200), Color(175, 115, 255), Color(255, 75, 60) };
+    Color(255, 80, 200), Color(175, 115, 255), Color(255, 75, 60), Color(255, 200, 50) };
 
 kit::Theme engineTheme()
 {
@@ -50,7 +50,7 @@ protected:
 
         drawLogo(145, 50);
         for (int m = 0; m < kModeCount; ++m) {
-            const float w = 86, x = kW - kMargin - (kModeCount - m) * (w + 6) + 6;
+            const float w = 75, x = kW - kMargin - (kModeCount - m) * (w + 6) + 6; // 7 Reiter neben dem Logo
             pill(100 + m, x, 33, w, 34, kModeNames[m], kModeColor[m], m == mode);
         }
 
@@ -92,7 +92,10 @@ protected:
         if (p == kTempoBpm)
             return "BPM";
         const char* name = kParams[p].name;
-        if (p >= kKickStart && p <= kKickAttack)
+        // Im Kick+Bass-Reiter bleiben "Kick …"/"Bass …" stehen, nur "Combo " fällt weg.
+        const bool combo = currentMode() == kModeCombo;
+        const bool strip = combo ? (p >= kComboOffset && p <= kComboBounceTime) : (p >= kKickStart && p <= kKickAttack);
+        if (strip)
             if (const char* sp = std::strchr(name, ' '))
                 return sp + 1;
         return name;

@@ -429,8 +429,13 @@ protected:
 
         char text_[24];
         kit::upper(label, text_, sizeof(text_));
-        fontSize(h > 24 ? 13 : 10);
+        float size = h > 24 ? 13.0f : 10.0f;
+        fontSize(size);
         textLetterSpacing(1.5f);
+        Rectangle<float> bounds; // zu lange Beschriftung verkleinern, bis sie in den Knopf passt
+        textBounds(0, 0, text_, nullptr, bounds);
+        if (bounds.getWidth() > w - 10.0f)
+            fontSize(size * (w - 10.0f) / bounds.getWidth());
         textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
         fillColor(active ? th.night : th.text);
         text(x + w / 2, y + h / 2 + 1, text_, nullptr);

@@ -8,7 +8,7 @@
 
 namespace offbeat {
 
-enum Mode { kModeKick, kModeBass, kModeHat, kModeStab, kModePad, kModeRiser, kModeCount };
+enum Mode { kModeKick, kModeBass, kModeHat, kModeStab, kModePad, kModeRiser, kModeCombo, kModeCount };
 
 enum ParamId {
     kMode,
@@ -86,6 +86,12 @@ enum ParamId {
     kOctave,     // LMMS schickt Noten 12 Halbtöne tiefer als angezeigt
     kTempoHost,  // An: Tempo und Takt vom Host; Aus oder ohne Host-Tempo: Tempo BPM
     kTempoBpm,
+    // Modus Kick+Bass (Combo): eine Note = Kick + Bass auf dem Offbeat
+    kComboOffset,
+    kComboLevel,
+    kComboBounce,
+    kComboBounceTime,
+    kDensity, // Bounce-Sektion für Kick, Bass und Kick+Bass: EQ → Glue → Sättigung → Clipper
 
     kParamCount
 };

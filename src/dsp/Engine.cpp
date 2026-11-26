@@ -1,7 +1,15 @@
 #include "Engine.hpp"
 
+#include <algorithm>
+
 
 namespace offbeat {
+
+// Kick-Pegel im Kick+Bass-Modus: −6,8 dB, so dass bei Combo Bass Level 0 dB Kick und Bass gleich laut sind
+// (gleiche RMS im Kick- und im Bass-Abschnitt). So lief es im Erklärvideo: Kick-Spur −6,8 dB, Bass-Spur 0 dB.
+// Die Kick wird abgesenkt (nicht der Bass angehoben), weil Drive danach auf 1,0 begrenzt. Drive hebt leise
+// Signale um seine Anfangssteigung g/tanh(g) an; die wird hier herausgerechnet (siehe saturate()).
+static constexpr float kComboKickCalibration = 0.457f;
 
 Engine::Engine()
 {
@@ -14,6 +22,7 @@ void Engine::setSampleRate(float newSr)
     sr = newSr;
     bass.setSampleRate(sr);
     riser.setSampleRate(sr);
+    glue.setSampleRate(sr);
     volume.setTime(10.0f, sr);
     resetVoices();
 }
@@ -40,6 +49,8 @@ void Engine::resetVoices()
         v = PolyVoice();
     riser.stop();
     chorus.reset();
+    comboBassIn = comboBassOff = -1;
+    glue.reset();
     heldCount = 0;
     toneL.reset();
     toneR.reset();
@@ -75,6 +86,19 @@ void Engine::noteOn(int note, int velocity)
         kicks[kickIndex].release();
         kickIndex ^= 1;
         kicks[kickIndex].trigger(params, endHz, vel, sr, (float)bpm);
+        break;
+    }
+    case kModeCombo: {
+        // Kick sofort, Bass eine Achtel später (Host-Tempo, sonst BPM-Regler) auf Note + Offset
+        const float endHz = params[kKickTune] >= 0.5f ? midiToHz((float)note) : params[kKickEnd];
+        kicks[kickIndex].release();
+        kickIndex ^= 1;
+        kicks[kickIndex].trigger(params, endHz, vel, sr, (float)bpm);
+        const double eighth = 30.0 / bpm * sr;
+        comboBassIn = (int64_t)eighth;
+        comboBassOff = (int64_t)(2.0 * eighth - 0.002 * sr); // 2 ms vor dem nächsten Schlag
+        comboNote = clampNote(note + (int)params[kComboOffset]);
+        comboVel = vel;
         break;
     }
     case kModeBass:
@@ -209,6 +233,20 @@ void Engine::process(float* outL, float* outR, uint32_t frames)
     const bool roll = mode == kModeBass && params[kBassRoll] >= 0.5f;
     const PolySettings ps = polySettings();
     const float lfoBeats = kPadLfoBeats[(int)params[kPadLfoRate]];
+    const bool bounceMode = mode == kModeKick || mode == kModeBass || mode == kModeCombo;
+    glue.set(bounceMode ? params[kDensity] : 0.0f);
+    // Combo: Bass mit eigenem Bounce, ohne Glide/Roll; Pegel so, dass 0 dB ≈ gleich laut wie die Kick
+    float comboGain = 0.0f, comboKickGain = 0.0f;
+    if (mode == kModeCombo) {
+        std::copy(params, params + kParamCount, comboParams);
+        comboParams[kBassBounce] = params[kComboBounce];
+        comboParams[kBassBounceTime] = params[kComboBounceTime];
+        comboParams[kBassGlide] = 0.0f;
+        comboParams[kBassRoll] = 0.0f;
+        comboGain = std::pow(10.0f, params[kComboLevel] / 20.0f);
+        const float g = 1.0f + 9.0f * drive;
+        comboKickGain = drive > 0.0f ? kComboKickCalibration * std::tanh(g) / g : kComboKickCalibration;
+    }
     if (!started) {
         volume.value = volTarget; // kein Einblenden beim allerersten Block
         started = true;
@@ -250,7 +288,19 @@ void Engine::process(float* outL, float* outR, uint32_t frames)
                 chorus.process(l, r, params[kPadChorus], sr);
         } else if (mode == kModeRiser) {
             riser.process(params, beatPos, l, r);
+        } else if (mode == kModeCombo) {
+            if (comboBassIn >= 0 && comboBassIn-- == 0)
+                bass.noteOn(comboParams, comboNote, comboVel);
+            if (comboBassOff >= 0 && comboBassOff-- == 0)
+                bass.noteOff();
+            float bl, br;
+            bass.process(comboParams, bl, br);
+            l = comboKickGain * (kicks[0].process() + kicks[1].process());
+            r = l;
+            l += comboGain * bl;
+            r += comboGain * br;
         }
+        glue.process(l, r);
 
         l = saturate(l, drive);
         r = saturate(r, drive);

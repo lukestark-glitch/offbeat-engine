@@ -1,8 +1,10 @@
 #include "Params.hpp"
 
+#include <initializer_list>
+
 namespace offbeat {
 
-const char* const kModeNames[kModeCount] = { "Kick", "Bass", "Hat", "Stab", "Pad", "Riser" };
+const char* const kModeNames[kModeCount] = { "Kick", "Bass", "Hat", "Stab", "Pad", "Riser", "Kick+Bass" };
 static const char* const kChordNames[3] = { "Aus", "Moll", "Dur" };
 static const char* const kPadLfoNames[5] = { "1/4", "1/2", "1 Takt", "2 Takte", "4 Takte" };
 static const char* const kSirenNames[5] = { "1/1", "1/2", "1/4", "1/8", "1/16" };
@@ -12,7 +14,7 @@ const float kSirenBeats[5] = { 4, 2, 1, 0.5f, 0.25f };
 // clang-format off
 const ParamInfo kParams[kParamCount] = {
     // name                symbol            unit    min     max      default  flags
-    { "Mode",              "mode",           "",     0,      5,       0,       kFlagInt, kModeNames },
+    { "Mode",              "mode",           "",     0,      6,       0,       kFlagInt, kModeNames },
     { "Volume",            "volume",         "dB",   -40,    6,       -3,      0 },
     { "Drive",             "drive",          "",     0,      1,       0,       0 },
     { "Tone",              "tone",           "Hz",   200,    20000,   20000,   kFlagLog },
@@ -83,10 +85,15 @@ const ParamInfo kParams[kParamCount] = {
     { "Riser Siren Depth", "riser_siren",    "st",   0,      12,      0,       0 },
     { "Riser Siren Rate",  "riser_rate",     "",     0,      4,       2,       kFlagInt, kSirenNames },
 
-    { "Kick Attack",       "kick_attack",    "ms",   0,      30,      1,       0 },
+    { "Kick Attack",       "kick_attack",    "ms",   0,      30,      0,       0 }, // 0: keine Rundung am Anfang (Bounce)
     { "Octave",            "octave",         "",     -2,     2,       1,       kFlagInt }, // +1: gleicht den LMMS-Versatz aus
     { "Tempo from Host",   "tempo_host",     "",     0,      1,       1,       kFlagBool },
     { "Tempo BPM",         "tempo_bpm",      "BPM",  60,     220,     160,     0 },
+    { "Combo Bass Note",   "combo_offset",   "st",   -24,    24,      12,      kFlagInt },
+    { "Combo Bass Level",  "combo_level",    "dB",   -12,    12,      0,       0 },
+    { "Combo Bass Bounce", "combo_bounce",   "st",   0,      36,      24,      0 },
+    { "Combo Bounce Time", "combo_btime",    "ms",   5,      60,      12,      0 },
+    { "Dichte",            "density",        "",     0,      1,       0,       0 },
 };
 
 namespace {
@@ -118,6 +125,18 @@ const V siren16[]   = { { kMode, kModeRiser }, { kRiserBars, 16 }, { kRiserMix, 
                         { kRiserStart, 1500 }, { kRiserEnd, 8000 }, { kRiserPitch, 7 },
                         { kRiserSiren, 5 }, { kRiserSirenRate, 2 }, { kRiserVolume, 0.6f } };
 
+const V kickBounce160[] = { { kMode, kModeKick }, { kVolume, -6.8f }, { kDrive, 0.05f }, { kTone, 16000 },
+                            { kKickStart, 300 }, { kKickTune, 0 }, { kKickEnd, 43.65f }, { kKickPunch, 38 },
+                            { kKickBody, 50 }, { kKickLength, 180 }, { kKickCut, 30 }, { kKickAttack, 0 },
+                            { kKickClick, 0.1f }, { kKickDrive, 0.7f } };
+const V comboBounce160[] = { { kMode, kModeCombo }, { kVolume, 0 }, { kDrive, 0.05f }, { kTone, 12000 },
+                             { kKickStart, 300 }, { kKickTune, 0 }, { kKickEnd, 43.65f }, { kKickPunch, 38 },
+                             { kKickBody, 50 }, { kKickLength, 180 }, { kKickCut, 30 }, { kKickAttack, 0 },
+                             { kKickClick, 0.1f }, { kKickDrive, 0.7f },
+                             { kBassWave, 0.3f }, { kBassSub, 0.8f }, { kBassCutoff, 700 }, { kBassReso, 0.2f },
+                             { kBassEnvAmt, 0.6f }, { kBassFiltDecay, 80 }, { kBassAmpDecay, 400 },
+                             { kComboBounce, 24 }, { kComboBounceTime, 12 } };
+
 #define PRESET(name, arr) { name, arr, (int)(sizeof(arr) / sizeof(arr[0])) }
 } // namespace
 
@@ -135,6 +154,8 @@ const Preset kPresets[] = {
     PRESET("Pad - Milchglas", padMilk),
     PRESET("Riser - 8 Takte", riser8),
     PRESET("Siren - 16 Takte", siren16),
+    PRESET("Kick - Bounce 160", kickBounce160),
+    PRESET("Kick+Bass - Bounce 160", comboBounce160),
 };
 // clang-format on
 
@@ -143,13 +164,21 @@ const int kPresetCount = (int)(sizeof(kPresets) / sizeof(kPresets[0]));
 int modeParams(int mode, int out[16])
 {
     // Erster Parameter jedes Modus; der Modus reicht bis zum ersten des nächsten.
-    static const int first[kModeCount + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kRiserSirenRate + 1 };
     int n = 0;
+    if (mode == kModeCombo) { // Kick und Bass stellt man in ihren Reitern ein; hier nur das Zusammenspiel
+        for (int p : { kComboOffset, kComboLevel, kComboBounce, kComboBounceTime, kDensity, kKickLength,
+                       kKickDrive, kBassAmpDecay, kBassCutoff, kBassSub })
+            out[n++] = p;
+        return n;
+    }
+    static const int first[kModeCombo + 1] = { kKickStart, kBassWave, kHatMix, kStabVoices, kPadDetune, kRiserBars, kRiserSirenRate + 1 };
     for (int p = first[mode]; p < first[mode + 1]; ++p) {
         out[n++] = p;
         if (p == kKickCut) // nachträglich angehängt, gehört hinter "Cut"
             out[n++] = kKickAttack;
     }
+    if (mode == kModeKick || mode == kModeBass)
+        out[n++] = kDensity;
     return n;
 }
 
@@ -177,6 +206,13 @@ int jsonParams(const float values[kParamCount], int* out)
     for (int p : head)
         out[n++] = p;
     const int mode = (int)values[kMode];
+    if (mode == kModeCombo) { // vollständiger Klang: alle Kick-, Bass- und Combo-Regler
+        n += modeParams(kModeKick, out + n);
+        n += modeParams(kModeBass, out + n) - 1; // Dichte steht schon bei Kick
+        for (int p : { kComboOffset, kComboLevel, kComboBounce, kComboBounceTime })
+            out[n++] = p;
+        return n;
+    }
     return n + modeParams(mode < 0 || mode >= kModeCount ? 0 : mode, out + n);
 }
 

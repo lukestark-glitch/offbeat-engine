@@ -58,6 +58,7 @@ int main(int argc, char** argv)
     const char* out = nullptr;
     const char* jsonFile = nullptr;
     bool check = false;
+    bool bounce160 = false; // --target bounce160: Abnahme nach den Messwerten des Erklärvideos (docs/BOUNCE_VIDEO.md)
     std::vector<std::pair<int, float>> overrides;
 
     for (int i = 1; i < argc; ++i) {
@@ -78,6 +79,11 @@ int main(int argc, char** argv)
             for (const ParamInfo& p : kParams)
                 std::printf("  %-14s %g..%g %s, %g\n", p.symbol, p.min, p.max, p.unit, p.def);
             return 0;
+        }
+        if (a == "--target" && v && std::string(v) == "bounce160") {
+            bounce160 = true;
+            ++i;
+            continue;
         }
         if (a == "--check") {
             check = true;
@@ -227,7 +233,7 @@ int main(int argc, char** argv)
                 preset >= 0 ? kPresets[preset].name : "(Defaults)", note, midiToHz((float)note), bpm, sr);
     std::printf("Spitze           %7.2f dBFS   RMS %7.2f dBFS\n", toDb(peak), toDb(std::sqrt(sumSq / total)));
     std::printf("Klingt bis       %7.1f ms (−40 dB: %.1f ms)\n", soundMs, lenMs);
-    if (modeIdx == kModeKick || modeIdx == kModeBass) {
+    if (modeIdx == kModeKick || modeIdx == kModeBass || modeIdx == kModeCombo) {
         std::puts("Tonhöhe (Nulldurchgänge, nur bei sinusartigem Signal aussagekräftig):");
         for (float t : { 5.0f, 10.0f, 20.0f, 36.0f, 68.0f, 97.0f, 150.0f, 170.0f })
             std::printf("  %5.0f ms  %7.1f Hz\n", t, pitchAt(mono, sr, t));
@@ -270,14 +276,41 @@ int main(int argc, char** argv)
         failed += ok ? 0 : 1;
     };
     std::puts("Prüfung:");
-    if (modeIdx == kModeKick) {
+    // Bounce 160 (Erklärvideo): Kick-Tonhöhe ab Einsatz 208/152/97/69 Hz bei 20/36/68/97 ms (±10 %).
+    if (bounce160 && (modeIdx == kModeKick || modeIdx == kModeCombo)) {
+        const float ms[4] = { 20, 36, 68, 97 }, hz[4] = { 208, 152, 97, 69 };
+        for (int k = 0; k < 4; ++k) {
+            const float f = pitchAt(mono, sr, ms[k]);
+            char what[96];
+            std::snprintf(what, sizeof(what), "Bounce 160: Tonhöhe %.0f ms %.0f Hz ±10 %% (gemessen %.1f)", ms[k], hz[k], f);
+            expect(what, std::fabs(f / hz[k] - 1.0f) <= 0.10f);
+        }
+    }
+    if (modeIdx == kModeCombo) {
+        // Kick (bis zum Offbeat) und Bass (Offbeat bis nächster Schlag) gleich laut; Dichte = Crest über einen Schlag.
+        const float eighthMs = 30000.0f / bpm;
+        // gleich laut = gleiche RMS der Abschnitte (so ist es im Erklärvideo gemessen; die Spitze kommt vom Bounce-Sprung)
+        const float kickDb = toDb(rmsIn(mono, sr, 0, eighthMs - 5)), bassDb = toDb(rmsIn(mono, sr, eighthMs + 5, 2 * eighthMs - 5));
+        const float crest = toDb(peakIn(mono, sr, 0, 2 * eighthMs)) - toDb(rmsIn(mono, sr, 0, 2 * eighthMs));
+        char what[120];
+        std::snprintf(what, sizeof(what), "Kick und Bass gleich laut ±1 dB (RMS Kick %.1f, Bass %.1f dBFS)", kickDb, bassDb);
+        expect(what, std::fabs(kickDb - bassDb) <= 1.0f);
+        if (bounce160) {
+            std::snprintf(what, sizeof(what), "Dichte: Crest über einen Schlag 6,5–8 dB (gemessen %.1f)", crest);
+            expect(what, crest >= 6.5f && crest <= 8.0f);
+        } else {
+            std::printf("  Crest über einen Schlag %.1f dB\n", crest);
+        }
+    }
+    if (modeIdx == kModeKick && !bounce160) {
         // Spec Abschnitt 5 (Kick – Hard Bounce, Note F1).
         const float p20 = pitchAt(mono, sr, 20), p97 = pitchAt(mono, sr, 97), p150 = pitchAt(mono, sr, 150);
         expect("Tonhöhe 20 ms: 140–160 Hz", p20 >= 140 && p20 <= 160);
         expect("Tonhöhe 97 ms: 55–65 Hz", p97 >= 55 && p97 <= 65);
         expect("Tonhöhe 150 ms: 45–52 Hz", p150 >= 45 && p150 <= 52);
         expect("Pegel 190 ms ≥ 30 dB unter Maximum", toDb(peakIn(mono, sr, 190, 191)) - toDb(peak) <= -30.0f);
-        expect("Weiche Einblendung (0–0,25 ms ≤ −12 dB)", startDb <= -12.0f);
+        if (values[kKickAttack] > 0.0f) // Attack 0: harter Start gewollt (keine Rundung am Anfang)
+            expect("Weiche Einblendung (0–0,25 ms ≤ −12 dB)", startDb <= -12.0f);
     } else if (modeIdx == kModeHat) {
         // Spec Abschnitt 2: Schwerpunkt ~6–7 kHz, kaum Energie über 10 kHz, Closed ~60 ms, Open ~220 ms.
         const bool open = note % 12 == 10;

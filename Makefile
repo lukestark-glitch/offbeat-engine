@@ -47,6 +47,8 @@ check: render
 	bin/offbeat-render --preset "Pad - Milchglas" --note F3 --check
 	bin/offbeat-render --preset "Riser - 8 Takte" --note F2 --length 12500 --tail 500 --check
 	bin/offbeat-render --preset "Siren - 16 Takte" --note F3 --length 24500 --tail 500 --check
+	bin/offbeat-render --preset "Kick - Bounce 160" --note F1 --target bounce160 --check
+	bin/offbeat-render --preset "Kick+Bass - Bounce 160" --note F1 --length 100 --tail 400 --target bounce160 --check
 
 install: plugin
 	rm -rf "$(VST3_DIR)/offbeat.vst3" "$(LV2_DIR)/offbeat.lv2" "$(PLUGINS_DIR)/VST/offbeat.vst" \
