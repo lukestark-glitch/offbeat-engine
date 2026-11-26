@@ -66,6 +66,10 @@ void Engine::resetVoices()
 // Raster frei mit "Tempo BPM" (Fallback, falls LMMS/Carla kein Tempo weitergibt).
 void Engine::setTransport(bool playing, double beatPosition, double hostBpm)
 {
+    // Play im Host beendet ein laufendes Vorhören: beim Abspielen klingt nur, was vom Host kommt.
+    if (playing && !transportRunning && previewActive)
+        stopPreview(true);
+    transportRunning = playing;
     if (params[kTempoHost] < 0.5f || hostBpm <= 0.0) {
         bpm = params[kTempoBpm];
         hostPlaying = false;
@@ -253,6 +257,8 @@ void Engine::updatePreview()
     if (request == lastPreview)
         return;
     lastPreview = request;
+    if (transportRunning && (request & 7) != 0)
+        return; // Host spielt: Vorhören startet nicht (auch nicht durch wiederhergestellte Parameter)
     const int code = request & 7;
     if (code == 0 || code > 4) {
         if (previewActive)

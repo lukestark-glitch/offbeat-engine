@@ -125,6 +125,27 @@ static int previewCheck()
         }
     }
     expect("Vorhören startet ohne laufenden Host (Anzeige „alle“)", playedAll);
+    {
+        // Play im Host: beendet das Vorhören, und solange er spielt, startet es nicht
+        Engine e;
+        e.setSampleRate((float)sr);
+        for (int i = 0; i < kParamCount; ++i)
+            e.setParam(i, values[i]);
+        e.setParam(kPreviewLoop, 1);
+        std::vector<float> bl(256), br(256);
+        e.setTransport(false, 0.0, 0.0);
+        e.process(bl.data(), br.data(), 256);
+        e.setParam(kPreview, 4 | 8);
+        e.process(bl.data(), br.data(), 256);
+        const bool running = e.getParam(kPreviewActive) == 4.0f;
+        e.setTransport(true, 0.0, 160.0); // Play
+        e.process(bl.data(), br.data(), 256);
+        const bool stoppedByPlay = e.getParam(kPreviewActive) == 0.0f;
+        e.setParam(kPreview, 4); // Wunsch während der Host spielt (z. B. wiederhergestellter Parameter)
+        e.process(bl.data(), br.data(), 256);
+        expect("Play im Host beendet das Vorhören", running && stoppedByPlay);
+        expect("Solange der Host spielt, startet kein Vorhören", e.getParam(kPreviewActive) == 0.0f);
+    }
     expect("Host-Note beendet das Vorhören", engine.getParam(kPreviewActive) == 0.0f);
     std::snprintf(buf, sizeof(buf), "Kein Knackser an Start/Stopp/Wechsel: größter Sprung %.3f ≤ größter Sprung im laufenden Klang %.3f", maxStep, maxStepSteady);
     expect(buf, maxStep <= maxStepSteady * 1.01f);
