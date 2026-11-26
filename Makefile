@@ -24,6 +24,10 @@ plugin:
 	$(MAKE) -C dpf/utils/lv2-ttl-generator
 	dpf/utils/generate-ttl.sh $(CURDIR)/bin
 
+# Standalone-App (für Bilder der Oberfläche: OFFBEAT_SCREENSHOT=datei.ppm bin/offbeat.app/Contents/MacOS/offbeat)
+standalone:
+	$(PLUGIN_ENV) $(MAKE) -C plugin jack
+
 render: bin/offbeat-render
 
 bin/offbeat-render: tools/offbeat-render.cpp $(DSP_SRC) $(DSP_HDR)
@@ -52,4 +56,4 @@ install: plugin
 clean:
 	rm -rf bin build
 
-.PHONY: all plugin render check install clean
+.PHONY: all plugin standalone render check install clean
