@@ -8,6 +8,8 @@
 //
 // --note ist die Taste wie in der LMMS-Piano-Roll: der Renderer schickt sie wie LMMS 12 Halbtöne tiefer.
 #include "Engine.hpp"
+#include "Render.hpp"
+#include "Preview.hpp"
 #include "ParamText.hpp"
 #include "Measure.hpp"
 
@@ -43,6 +45,93 @@ static int findParam(const std::string& symbol)
     return -1;
 }
 
+// Abnahme der Vorschau (AUFTRAG_BOUNCE_PREVIEW §3):
+//  1. renderPreview() – das, was die Oberfläche zeichnet – ist bitgleich zum Renderer mit denselben Noten.
+//  2. Vorhören über den Plugin-Ausgang (Parameter preview) knackst nicht: Start, Loop, Stopp, Host-Note.
+static int previewCheck()
+{
+    int failed = 0;
+    auto expect = [&](const std::string& what, bool ok) {
+        std::printf("  [%s] %s\n", ok ? "OK " : "FEHLER", what.c_str());
+        failed += ok ? 0 : 1;
+    };
+    const int sr = 48000;
+    const double bpm = 160.0;
+    std::puts("== Vorschau bitgleich zum Renderer (alle Presets, jede Ebene und alle, 1 Schlag und 1 Takt)");
+    int compared = 0, differing = 0;
+    for (int p = 0; p < kPresetCount; ++p) {
+        float values[kParamCount];
+        applyPreset(p, values);
+        const PreviewSpec spec = previewSpec((int)values[kMode]);
+        for (double beats : { 1.0, 4.0 })
+            for (int layer = -1; layer < spec.layers; ++layer) {
+                std::vector<float> al, ar;
+                renderPreview(values, layer, beats, bpm, sr, al, ar);
+                // Renderer-Weg: gleiche Noten, Engine wie in main() eingestellt (alle Parameter gesetzt)
+                Engine engine;
+                engine.setSampleRate((float)sr);
+                for (int i = 0; i < kParamCount; ++i)
+                    engine.setParam(i, values[i]);
+                bool mk, mb;
+                previewMute((int)values[kMode], layer, mk, mb);
+                engine.setPreviewMute(mk, mb);
+                NoteEvent ev[64];
+                const int n = previewEvents(values, layer, beats, bpm, sr, ev, 64);
+                std::vector<float> bl(al.size()), br(al.size());
+                renderEvents(engine, std::vector<NoteEvent>(ev, ev + n), bpm, sr, bl.data(), br.data(), (uint32_t)bl.size());
+                ++compared;
+                differing += (al == bl && ar == br) ? 0 : 1;
+            }
+    }
+    char buf[160];
+    std::snprintf(buf, sizeof(buf), "%d Vorschau-Renderings, davon %d nicht bitgleich", compared, differing);
+    expect(buf, differing == 0);
+
+    std::puts("== Vorhören über den Plugin-Ausgang (Kick+Bass – Bounce 160, Loop): Start, Stopp, Host-Note");
+    float values[kParamCount];
+    applyPreset(kPresetCount - 1, values);
+    Engine engine;
+    engine.setSampleRate((float)sr);
+    for (int i = 0; i < kParamCount; ++i)
+        engine.setParam(i, values[i]);
+    engine.setParam(kPreviewLoop, 1);
+    const uint32_t total = (uint32_t)(3.0 * sr);
+    std::vector<float> l(total), r(total);
+    float maxStep = 0.0f, maxStepSteady = 0.0f;
+    bool playedAll = false;
+    for (uint32_t pos = 0; pos < total; pos += 256) {
+        const double t = (double)pos / sr;
+        engine.setTransport(false, 0.0, 0.0); // Host läuft nicht
+        if (pos == 256)
+            engine.setParam(kPreview, 4 | 8); // „Alle zusammen“, Loop
+        if (pos == 256 * 200)
+            engine.setParam(kPreview, 0); // Stopp
+        if (pos == 256 * 300)
+            engine.setParam(kPreview, 1); // nur Kick
+        if (pos == 256 * 400)
+            engine.noteOn(17, 110); // Host-Note (F1 nach LMMS-Versatz) hat Vorrang
+        const uint32_t n = std::min<uint32_t>(256, total - pos);
+        engine.process(&l[pos], &r[pos], n);
+        if (pos > 256 && pos < 256 * 200)
+            playedAll |= engine.getParam(kPreviewActive) == 4.0f;
+        for (uint32_t i = pos + 1; i < pos + n; ++i) {
+            const float step = std::fabs(l[i] - l[i - 1]);
+            // Übergänge des Vorhörens: ±10 ms um Start, Stopp und Ebenen-Wechsel
+            for (uint32_t at : { 256u, 256u * 200, 256u * 300 })
+                if (i + sr / 100 > at && i < at + sr / 100)
+                    maxStep = std::fmax(maxStep, step);
+            if (t > 0.2 && t < 1.0)
+                maxStepSteady = std::fmax(maxStepSteady, step);
+        }
+    }
+    expect("Vorhören startet ohne laufenden Host (Anzeige „alle“)", playedAll);
+    expect("Host-Note beendet das Vorhören", engine.getParam(kPreviewActive) == 0.0f);
+    std::snprintf(buf, sizeof(buf), "Kein Knackser an Start/Stopp/Wechsel: größter Sprung %.3f ≤ größter Sprung im laufenden Klang %.3f", maxStep, maxStepSteady);
+    expect(buf, maxStep <= maxStepSteady * 1.01f);
+    std::printf("%s\n", failed ? "NICHT BESTANDEN" : "BESTANDEN");
+    return failed ? 1 : 0;
+}
+
 static void usage()
 {
     std::puts("offbeat-render [--preset NAME|NR] [--mode kick|bass|hat|stab|pad|riser] [--note F1|29[@ms]]... [--velocity 0-127]\n"
@@ -64,6 +153,8 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         const char* v = i + 1 < argc ? argv[i + 1] : nullptr;
+        if (a == "--preview-check")
+            return previewCheck();
         if (a == "--preset-json" && v) { // Preset als JSON, genau wie KOPIEREN in der Oberfläche
             float vals[kParamCount];
             applyPreset(std::atoi(v), vals);
@@ -173,36 +264,18 @@ int main(int argc, char** argv)
 
     // Transport läuft ab Schlag 0. Jede Note startet zu ihrer Zeit (--note F1@100) und wird
     // nach --length losgelassen; Ereignisse fallen genau auf ihren Frame.
-    struct Event { uint32_t frame; int note; bool on; };
-    std::vector<Event> events;
+    std::vector<NoteEvent> events;
     float endMs = 0.0f;
     for (const auto& nt : notes) {
-        events.push_back({ (uint32_t)(nt.second * 0.001f * sr), nt.first, true });
-        events.push_back({ (uint32_t)((nt.second + lengthMs) * 0.001f * sr), nt.first, false });
+        // Wie LMMS: die Taste der Piano-Roll kommt 12 Halbtöne tiefer an (Octave +1 gleicht das aus)
+        const int midi = nt.first - 12 < 0 ? 0 : nt.first - 12;
+        events.push_back({ (uint32_t)(nt.second * 0.001f * sr), midi, velocity, true });
+        events.push_back({ (uint32_t)((nt.second + lengthMs) * 0.001f * sr), midi, velocity, false });
         endMs = std::max(endMs, nt.second + lengthMs);
     }
-    std::stable_sort(events.begin(), events.end(), [](const Event& a, const Event& b) { return a.frame < b.frame; });
     const uint32_t total = (uint32_t)((endMs + tailMs) * 0.001f * sr);
     std::vector<float> l(total), r(total);
-    const uint32_t block = 256;
-    size_t next = 0;
-    for (uint32_t pos = 0; pos < total;) {
-        engine.setTransport(true, (double)pos / sr * bpm / 60.0, bpm); // wie im Plugin: vor den Noten des Blocks
-        while (next < events.size() && events[next].frame <= pos) {
-            const Event& e = events[next++];
-            // Wie LMMS: die Taste der Piano-Roll kommt 12 Halbtöne tiefer an (Octave +1 gleicht das aus)
-            const int midi = e.note - 12 < 0 ? 0 : e.note - 12;
-            if (e.on)
-                engine.noteOn(midi, velocity);
-            else
-                engine.noteOff(midi);
-        }
-        uint32_t n = total - pos < block ? total - pos : block;
-        if (next < events.size() && events[next].frame < pos + n)
-            n = events[next].frame - pos;
-        engine.process(&l[pos], &r[pos], n);
-        pos += n;
-    }
+    renderEvents(engine, events, bpm, sr, l.data(), r.data(), total); // wie im Plugin und in der Vorschau
 
     // Messwerte
     std::vector<float> mono(total);

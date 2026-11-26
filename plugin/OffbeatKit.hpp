@@ -70,13 +70,35 @@ public:
     }
 
 protected:
-    enum { kButtonCopy = -1, kButtonPaste = -2 };
+    enum { kButtonCopy = -1, kButtonPaste = -2,
+           kButtonPreview = -10 /* -10 … -12: Ebene 1–3 */, kButtonPreviewAll = -13, kButtonPreviewLoop = -14,
+           kButtonPreviewRange = -15 };
 
     // ---- vom Plugin zu füllen -----------------------------------------------------------------
 
     virtual void drawContent() = 0;
     virtual void onButton(int /*id*/) {}
     virtual const char* controlLabel(int p) const { return offbeat::kParams[p].name; }
+
+    // ---- Vorschau (Wellenform + Vorhören), optional ------------------------------------------------
+    // Ein Plugin mit Vorschau nennt seine Parameter und füllt in renderPreview() die Ebenen.
+    struct PreviewParams {
+        int play = -1;   // Vorhör-Wunsch: Bit 0–2 Ebene (1–3, 4 = alle, 0 = Stopp), Bit 3 wechselt je Klick
+        int loop = -1;   // Schalter Loop
+        int bar = -1;    // Schalter Ausschnitt: aus = 1 Schlag, an = 1 Takt
+        int active = -1; // Anzeige vom DSP: welche Ebene gerade spielt
+        int bpm = -1;    // Anzeige vom DSP: aktuelles Tempo (für die Schlag- und Offbeat-Linien)
+    };
+    struct PreviewLayer {
+        std::string name;
+        std::vector<float> mono; // gerendert mit dem echten DSP
+    };
+    virtual PreviewParams previewParams() const { return PreviewParams(); }
+    // Ebenen neu rendern (UI-Thread, gedrosselt, nie im Audio-Thread): previewLayers füllen und in previewSum
+    // die Summe („alle zusammen“, eigens gerendert). Länge = Ausschnitt.
+    virtual void renderPreview() {}
+    std::vector<PreviewLayer> previewLayers;
+    std::vector<float> previewSum;
 
     // ---- Bausteine ------------------------------------------------------------------------------
 
@@ -442,6 +464,127 @@ protected:
         textLetterSpacing(0);
     }
 
+    // Vorschau: Wellenform (Summe gefüllt, Ebenen als Linien), Schlag- und Offbeat-Linien, Dichte (Crest) und
+    // Spitze, rechts die Vorhör-Knöpfe (je Ebene, ALLE, LOOP, Ausschnitt). Farben aus dem Theme bzw. c.
+    void drawPreview(float x, float y, float w, float h, const Color& c)
+    {
+        const PreviewParams pp = previewParams();
+        if (pp.play < 0)
+            return;
+        const float bw = 92, wx = x, ww = w - 2 * bw - 22, wy = y, wh = h;
+        beginPath();
+        roundedRect(wx, wy, ww, wh, 6);
+        fillColor(th.night);
+        fill();
+        strokeColor(kit::withAlpha(c, 0.35f));
+        strokeWidth(1);
+        stroke();
+
+        const bool bar = pp.bar >= 0 && values[pp.bar] >= 0.5f;
+        const int beats = bar ? 4 : 1;
+        const float mid = wy + wh / 2, amp = wh / 2 - 4;
+        for (int b = 0; b < beats; ++b) { // Schlag- (schwach) und Offbeat-Linien (hell)
+            for (int half = 0; half < 2; ++half) {
+                const float lx = wx + ww * ((float)b + 0.5f * half) / beats;
+                if (lx <= wx + 1)
+                    continue;
+                beginPath();
+                moveTo(lx, wy + 3);
+                lineTo(lx, wy + wh - 3);
+                strokeColor(kit::withAlpha(half ? c : th.text, half ? 0.55f : 0.15f));
+                strokeWidth(half ? 1.5f : 1.0f);
+                stroke();
+            }
+        }
+        fontSize(8);
+        textLetterSpacing(1);
+        textAlign(ALIGN_LEFT | ALIGN_TOP);
+        fillColor(kit::withAlpha(c, 0.8f));
+        text(wx + ww / beats * 0.5f + 4, wy + 4, "OFFBEAT", nullptr);
+        textLetterSpacing(0);
+
+        auto envelope = [&](const std::vector<float>& x, std::vector<float>& lo, std::vector<float>& hi) {
+            const int cols = (int)ww;
+            lo.assign(cols, 0.0f), hi.assign(cols, 0.0f);
+            if (x.empty())
+                return;
+            for (int k = 0; k < cols; ++k) {
+                const size_t a = x.size() * k / cols, e = std::max(a + 1, x.size() * (k + 1) / cols);
+                float mn = 0.0f, mx = 0.0f;
+                for (size_t i = a; i < e && i < x.size(); ++i)
+                    mn = std::fmin(mn, x[i]), mx = std::fmax(mx, x[i]);
+                lo[k] = mn, hi[k] = mx;
+            }
+        };
+        std::vector<float> lo, hi;
+        envelope(previewSum, lo, hi); // Summe: gefülltes Band mit Neon-Rand
+        if (!lo.empty()) {
+            beginPath();
+            moveTo(wx, mid - amp * hi[0]);
+            for (size_t k = 1; k < hi.size(); ++k)
+                lineTo(wx + k, mid - amp * hi[k]);
+            for (size_t k = lo.size(); k-- > 0;)
+                lineTo(wx + k, mid - amp * lo[k]);
+            closePath();
+            fillColor(kit::withAlpha(c, 0.35f));
+            fill();
+            strokeColor(c);
+            strokeWidth(1.2f);
+            stroke();
+        }
+        for (size_t i = 0; i < previewLayers.size() && previewLayers.size() > 1; ++i) { // Ebenen als Linien
+            envelope(previewLayers[i].mono, lo, hi);
+            const Color lc = layerColor(c, (int)i);
+            beginPath();
+            moveTo(wx, mid - amp * hi[0]);
+            for (size_t k = 1; k < hi.size(); ++k)
+                lineTo(wx + k, mid - amp * hi[k]);
+            strokeColor(kit::withAlpha(lc, 0.9f));
+            strokeWidth(1.0f);
+            stroke();
+        }
+
+        // Dichte (Crest) und Spitze der Summe
+        double sq = 0.0;
+        float peak = 0.0f;
+        for (float v : previewSum)
+            sq += (double)v * v, peak = std::fmax(peak, std::fabs(v));
+        const float rms = previewSum.empty() ? 0.0f : (float)std::sqrt(sq / previewSum.size());
+        char info[64];
+        if (peak > 1e-6f && rms > 1e-9f)
+            std::snprintf(info, sizeof(info), "DICHTE %.1f dB  \xc2\xb7  SPITZE %.1f dBFS", 20.0f * std::log10(peak / rms), 20.0f * std::log10(peak));
+        else
+            std::snprintf(info, sizeof(info), "STILLE");
+        fontSize(9);
+        textLetterSpacing(1);
+        textAlign(ALIGN_RIGHT | ALIGN_BOTTOM);
+        fillColor(th.text);
+        text(wx + ww - 6, wy + wh - 4, info, nullptr);
+        textLetterSpacing(0);
+
+        // Vorhör-Knöpfe: Ebenen, ALLE (bei mehreren Ebenen), LOOP, Ausschnitt
+        const int playing = pp.active >= 0 ? (int)values[pp.active] : 0;
+        const float bx = wx + ww + 12, bh = 22, gap = 6;
+        const int n = (int)previewLayers.size();
+        for (int i = 0; i < n; ++i)
+            pill(kButtonPreview - i, bx + (i % 2) * (bw + gap), y + (i / 2) * (bh + gap), bw, bh, previewLayers[i].name.c_str(),
+                 layerColor(c, i), playing == i + 1);
+        if (n > 1)
+            pill(kButtonPreviewAll, bx + (n % 2) * (bw + gap), y + (n / 2) * (bh + gap), bw, bh, "Alle", c, playing == 4);
+        const float rowY = y + h - bh;
+        pill(kButtonPreviewLoop, bx, rowY, bw, bh, "Loop", c, pp.loop >= 0 && values[pp.loop] >= 0.5f);
+        pill(kButtonPreviewRange, bx + bw + gap, rowY, bw, bh, bar ? "1 Takt" : "1 Schlag", c, false);
+    }
+
+    // Farbe einer Ebene: Ebene 0 in der Akzentfarbe, weitere heller bzw. wärmer
+    static Color layerColor(const Color& c, int i)
+    {
+        if (i == 0)
+            return c;
+        const float t = i == 1 ? 0.45f : 0.75f;
+        return Color(c.red + (1.0f - c.red) * t, c.green + (0.9f - c.green) * t * 0.6f, c.blue * (1.0f - t * 0.5f), 1.0f);
+    }
+
     // KOPIEREN / EINFÜGEN, rechtsbündig bis xRight; Statusmeldung links daneben.
     void copyPaste(float xRight, float y)
     {
@@ -469,6 +612,8 @@ protected:
         setParameterValue(p, v);
         if (gesture)
             editParameter(p, false);
+        if (!(info.flags & offbeat::kFlagHidden) || p == previewParams().bar)
+            previewDirty = true;
         redraw();
     }
 
@@ -522,7 +667,12 @@ protected:
     {
         if (index >= (uint32_t)offbeat::kParamCount)
             return;
+        const float old = values[index];
         values[index] = value;
+        const PreviewParams pp = previewParams();
+        if (!(offbeat::kParams[index].flags & (offbeat::kFlagOutput | offbeat::kFlagHidden))
+            || (int)index == pp.bar || ((int)index == pp.bpm && std::fabs(old - value) > 0.01f))
+            previewDirty = true;
         redraw();
     }
 
@@ -530,6 +680,7 @@ protected:
     void programLoaded(uint32_t index) override
     {
         offbeat::applyPreset((int)index, values);
+        previewDirty = true;
         redraw();
     }
 #endif
@@ -554,6 +705,13 @@ protected:
                 getWindow().renderToPicture(shot);
             else if (screenshotTicks == 40)
                 std::exit(0);
+            dirty = true;
+        }
+        // Vorschau höchstens alle 120 ms neu rendern (Reglerbewegungen gedrosselt)
+        if (previewDirty && previewParams().play >= 0 && Clock::now() - previewRendered > std::chrono::milliseconds(120)) {
+            previewDirty = false;
+            previewRendered = Clock::now();
+            renderPreview();
             dirty = true;
         }
         if (dirty)
@@ -605,6 +763,8 @@ protected:
                 copySettings();
             else if (h->button == kButtonPaste)
                 pasteSettings();
+            else if (h->button <= kButtonPreview && h->button >= kButtonPreviewRange)
+                previewButton(h->button);
             else
                 onButton(h->button);
             return true;
@@ -713,6 +873,8 @@ private:
     bool dragMoved = false, dirty = true;
     uint lastClickTime = 0;
     int screenshotTicks = 0;
+    bool previewDirty = true, previewToggle = false;
+    std::chrono::steady_clock::time_point previewRendered;
     float dragY = 0, dragNorm = 0;
     std::string editText, status;
     Clock::time_point statusUntil;
@@ -774,6 +936,24 @@ private:
         else if (!editText.empty())
             showStatus("Ung\xc3\xbcltige Eingabe");
         redraw();
+    }
+
+    void previewButton(int id)
+    {
+        const PreviewParams pp = previewParams();
+        if (id == kButtonPreviewLoop && pp.loop >= 0) {
+            setValue(pp.loop, values[pp.loop] >= 0.5f ? 0.0f : 1.0f, true);
+            return;
+        }
+        if (id == kButtonPreviewRange && pp.bar >= 0) {
+            setValue(pp.bar, values[pp.bar] >= 0.5f ? 0.0f : 1.0f, true);
+            return;
+        }
+        int code = id == kButtonPreviewAll ? 4 : kButtonPreview - id + 1;
+        if (pp.active >= 0 && (int)values[pp.active] == code)
+            code = 0; // laufende Ebene noch einmal anklicken = Stopp
+        previewToggle = !previewToggle; // jede Änderung löst im DSP aus, auch zweimal dieselbe Ebene
+        setValue(pp.play, (float)(code | (previewToggle ? 8 : 0)), true);
     }
 
     void showStatus(const std::string& text)

@@ -5,7 +5,7 @@
 # Windows (MSYS2/MinGW) und Linux: `make` baut nach bin/; Installation siehe README.
 
 CXX ?= c++
-DSP_SRC = src/dsp/Engine.cpp src/dsp/Params.cpp src/dsp/ParamText.cpp
+DSP_SRC = src/dsp/Engine.cpp src/dsp/Params.cpp src/dsp/ParamText.cpp src/dsp/Preview.cpp
 DSP_HDR = $(wildcard src/dsp/*.hpp) tools/Measure.hpp
 PLUGINS_DIR = $(HOME)/Library/Audio/Plug-Ins
 VST3_DIR = $(PLUGINS_DIR)/VST3
@@ -49,6 +49,7 @@ check: render
 	bin/offbeat-render --preset "Siren - 16 Takte" --note F3 --length 24500 --tail 500 --check
 	bin/offbeat-render --preset "Kick - Bounce 160" --note F1 --target bounce160 --check
 	bin/offbeat-render --preset "Kick+Bass - Bounce 160" --note F1 --length 100 --tail 400 --target bounce160 --check
+	bin/offbeat-render --preview-check
 
 install: plugin
 	rm -rf "$(VST3_DIR)/offbeat.vst3" "$(LV2_DIR)/offbeat.lv2" "$(PLUGINS_DIR)/VST/offbeat.vst" \

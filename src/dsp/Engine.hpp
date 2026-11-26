@@ -4,6 +4,7 @@
 
 #include "Bass.hpp"
 #include "Glue.hpp"
+#include "Render.hpp"
 #include "Hat.hpp"
 #include "Kick.hpp"
 #include "Poly.hpp"
@@ -19,9 +20,13 @@ public:
     void setParam(int id, float value);
     float getParam(int id) const { return params[id]; }
 
+    // Noten vom Host; sie haben Vorrang und beenden ein laufendes Vorhören.
     void noteOn(int note, int velocity);
     void noteOff(int note);
     void allNotesOff();
+
+    // Vorschau: Teile eines geteilten Klangs stumm schalten (Kick+Bass: nur Kick bzw. nur Bass hören).
+    void setPreviewMute(bool kick, bool bass) { muteKick = kick, muteBass = bass, muteUntilQuiet = false; }
 
     // Einmal pro Block: Host-Transport. Ohne Transport läuft das 16tel-Raster frei.
     void setTransport(bool playing, double beatPosition, double bpm);
@@ -29,6 +34,10 @@ public:
     void process(float* outL, float* outR, uint32_t frames);
 
 private:
+    void playNoteOn(int note, int velocity);
+    void playNoteOff(int note);
+    void updatePreview(); // einmal pro Block: Vorhör-Wunsch aus der Oberfläche übernehmen
+    void stopPreview(bool releaseNotes);
     void resetVoices();
     void startPoly(int key, float note, float velocity);
     PolySettings polySettings() const;
@@ -63,6 +72,13 @@ private:
     int comboNote = 0;
     float comboVel = 1.0f;
     BounceGlue glue;
+
+    // Vorhören (aus der Oberfläche über den Parameter preview): eigenes kleines Noten-Raster
+    bool muteKick = false, muteBass = false, muteUntilQuiet = false; // muteUntilQuiet: nach dem Vorhören aufheben
+    bool previewSeen = false;
+    int lastPreview = 0, previewActive = 0, previewCount = 0, previewNext = 0;
+    uint32_t previewPos = 0, previewLen = 0;
+    NoteEvent previewEv[64];
 
     Svf toneL, toneR;
     Svf widthHp[4]; // Hochpass 48 dB/Okt. aufs Seitensignal: unter 150 Hz bleibt alles mono

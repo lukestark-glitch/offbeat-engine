@@ -1,4 +1,5 @@
 #include "Engine.hpp"
+#include "Preview.hpp"
 
 #include <algorithm>
 
@@ -51,6 +52,9 @@ void Engine::resetVoices()
     chorus.reset();
     comboBassIn = comboBassOff = -1;
     glue.reset();
+    previewActive = 0;
+    if (muteUntilQuiet)
+        muteKick = muteBass = muteUntilQuiet = false;
     heldCount = 0;
     toneL.reset();
     toneR.reset();
@@ -74,6 +78,18 @@ void Engine::setTransport(bool playing, double beatPosition, double hostBpm)
 }
 
 void Engine::noteOn(int note, int velocity)
+{
+    if (previewActive)
+        stopPreview(false); // Noten vom Host haben Vorrang
+    playNoteOn(note, velocity);
+}
+
+void Engine::noteOff(int note)
+{
+    playNoteOff(note);
+}
+
+void Engine::playNoteOn(int note, int velocity)
 {
     note = transpose(note);
     const float vel = clampf((float)velocity / 127.0f, 0.0f, 1.0f);
@@ -179,7 +195,7 @@ PolySettings Engine::polySettings() const
     return s;
 }
 
-void Engine::noteOff(int note)
+void Engine::playNoteOff(int note)
 {
     note = transpose(note);
     int i = 0;
@@ -218,6 +234,46 @@ void Engine::allNotesOff()
     riser.release();
 }
 
+void Engine::stopPreview(bool releaseNotes)
+{
+    previewActive = 0;
+    muteKick = muteBass = muteUntilQuiet = false;
+    if (releaseNotes)
+        allNotesOff();
+}
+
+void Engine::updatePreview()
+{
+    const int request = (int)params[kPreview];
+    if (!previewSeen) { // Wert beim Laden eines Projekts: nur merken, nicht abspielen
+        previewSeen = true;
+        lastPreview = request;
+        return;
+    }
+    if (request == lastPreview)
+        return;
+    lastPreview = request;
+    const int code = request & 7;
+    if (code == 0 || code > 4) {
+        if (previewActive)
+            stopPreview(true);
+        return;
+    }
+    allNotesOff();
+    const int layer = code == 4 ? -1 : code - 1;
+    const double beats = params[kPreviewBar] >= 0.5f ? 4.0 : 1.0;
+    previewCount = previewEvents(params, layer, beats, bpm, (int)sr, previewEv, 64);
+    for (int i = 1; i < previewCount; ++i) // nach Zeit sortieren (ohne Speicher anzufordern)
+        for (int j = i; j > 0 && previewEv[j].frame < previewEv[j - 1].frame; --j)
+            std::swap(previewEv[j], previewEv[j - 1]);
+    previewMute((int)params[kMode], layer, muteKick, muteBass);
+    muteUntilQuiet = true;
+    previewPos = 0;
+    previewNext = 0;
+    previewLen = (uint32_t)std::lround(beats * 60.0 / bpm * sr);
+    previewActive = code;
+}
+
 void Engine::process(float* outL, float* outR, uint32_t frames)
 {
     const DenormalGuard denormals; // Flush-to-Zero für diesen Block (Intel und Apple Silicon)
@@ -252,7 +308,29 @@ void Engine::process(float* outL, float* outR, uint32_t frames)
         started = true;
     }
 
+    updatePreview();
     for (uint32_t i = 0; i < frames; ++i) {
+        if (previewActive) {
+            while (previewNext < previewCount && previewEv[previewNext].frame <= previewPos) {
+                const NoteEvent& e = previewEv[previewNext++];
+                if (e.on)
+                    playNoteOn(e.note, e.velocity);
+                else
+                    playNoteOff(e.note);
+            }
+            if (++previewPos >= previewLen) {
+                if (params[kPreviewLoop] >= 0.5f)
+                    previewPos = 0, previewNext = 0; // nächste Runde
+                else
+                    previewActive = 0; // Rest klingt natürlich aus
+            }
+        } else if (muteUntilQuiet && (muteKick || muteBass)) {
+            bool still = false;
+            for (const KickVoice& k : kicks)
+                still |= k.active;
+            if (!still && !bass.active)
+                muteKick = muteBass = false; // Vorschau ist ausgeklungen
+        }
         // 16tel-Raster für Roll
         const int64_t sixteenth = (int64_t)std::floor(beatPos * 4.0);
         if (sixteenth != lastSixteenth) {
@@ -295,10 +373,10 @@ void Engine::process(float* outL, float* outR, uint32_t frames)
                 bass.noteOff();
             float bl, br;
             bass.process(comboParams, bl, br);
-            l = comboKickGain * (kicks[0].process() + kicks[1].process());
-            r = l;
-            l += comboGain * bl;
-            r += comboGain * br;
+            const float kick = comboKickGain * (kicks[0].process() + kicks[1].process());
+            l = r = muteKick ? 0.0f : kick;
+            if (!muteBass)
+                l += comboGain * bl, r += comboGain * br;
         }
         glue.process(l, r);
 
@@ -322,6 +400,8 @@ void Engine::process(float* outL, float* outR, uint32_t frames)
         outL[i] = softLimit(v * (mid + side));
         outR[i] = softLimit(v * (mid - side));
     }
+    params[kPreviewActive] = (float)previewActive; // Anzeige für die Oberfläche
+    params[kCurrentBpm] = (float)bpm;
 }
 
 } // namespace offbeat

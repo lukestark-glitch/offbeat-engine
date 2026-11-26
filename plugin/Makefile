@@ -7,7 +7,8 @@ FILES_DSP = \
 	OffbeatPlugin.cpp \
 	../src/dsp/Engine.cpp \
 	../src/dsp/Params.cpp \
-	../src/dsp/ParamText.cpp
+	../src/dsp/ParamText.cpp \
+	../src/dsp/Preview.cpp
 
 # Params.cpp nutzt auch die UI; sie steckt bei VST3 und LV2 (eine Datei) im selben Binary.
 FILES_UI = OffbeatUI.cpp

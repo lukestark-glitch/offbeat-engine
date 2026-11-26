@@ -92,6 +92,13 @@ enum ParamId {
     kComboBounce,
     kComboBounceTime,
     kDensity, // Bounce-Sektion für Kick, Bass und Kick+Bass: EQ → Glue → Sättigung → Clipper
+    // Vorhören aus der Oberfläche (versteckt, nicht automatisierbar). preview: Bit 0–2 = Ebene
+    // (0 = Stopp, 1–3 = Ebene, 4 = alle), Bit 3 wechselt bei jedem Klick, damit jede Änderung auslöst.
+    kPreview,
+    kPreviewLoop,
+    kPreviewBar,    // Ausschnitt: aus = 1 Schlag, an = 1 Takt
+    kPreviewActive, // Anzeige: welche Ebene gerade vorgehört wird (0 = keine)
+    kCurrentBpm,    // Anzeige: Tempo, mit dem die Engine gerade rechnet (Offbeat-Linie der Vorschau)
 
     kParamCount
 };

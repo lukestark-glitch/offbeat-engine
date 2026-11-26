@@ -1,6 +1,7 @@
 // Oberfläche von Offbeat Engine: Modus-Reiter, globale Regler (mit Oktave und Tempo in der
 // Kopfzeile), Auto-Bild und die Regler des aktiven Modus. Look und Bedienung: OffbeatKit.hpp.
 #include "OffbeatKit.hpp"
+#include "Preview.hpp"
 #include "CarImage.h" // aus assets/car.png erzeugt (xxd -i), siehe plugin/Makefile
 
 START_NAMESPACE_DISTRHO
@@ -11,8 +12,8 @@ using kit::kCellW;
 using kit::kLabelH;
 
 namespace {
-constexpr float kW = 860, kH = 512, kMargin = 20, kGridX = 31, kCols = 7;
-constexpr float kGlobalPanelY = 104, kModePanelY = 252;
+constexpr float kW = 860, kH = 652, kMargin = 20, kGridX = 31, kCols = 7;
+constexpr float kGlobalPanelY = 104, kModePanelY = 252, kPreviewY = 510;
 
 const int kGlobals[4] = { kVolume, kDrive, kTone, offbeat::kWidth };
 
@@ -75,6 +76,35 @@ protected:
         const int count = modeParams(mode, list);
         for (int n = 0; n < count; ++n)
             knob(list[n], kGridX + (n % (int)kCols) * kCellW, kModePanelY + kLabelH + (n / (int)kCols) * kCellH, accent);
+
+        // Vorschau: so klingt der Modus mit den aktuellen Reglern (echter DSP, offline gerendert)
+        drawPanel(kMargin, kPreviewY, kW - 2 * kMargin, kH - kPreviewY - 12, "VORSCHAU", accent);
+        drawPreview(kMargin + 14, kPreviewY + kLabelH + 2, kW - 2 * kMargin - 28, kH - kPreviewY - kLabelH - 26, accent);
+    }
+
+    PreviewParams previewParams() const override
+    {
+        PreviewParams pp;
+        pp.play = kPreview, pp.loop = kPreviewLoop, pp.bar = kPreviewBar, pp.active = kPreviewActive, pp.bpm = kCurrentBpm;
+        return pp;
+    }
+
+    // Ebenen des Modus (z. B. Kick, Bass) und die Summe, gerendert wie offbeat-render (bitgleich).
+    void renderPreview() override
+    {
+        const int mode = currentMode();
+        const PreviewSpec spec = previewSpec(mode);
+        const double beats = values[kPreviewBar] >= 0.5f ? 4.0 : 1.0;
+        const double bpm = values[kCurrentBpm] > 20.0f ? values[kCurrentBpm] : 160.0;
+        std::vector<float> l, r;
+        previewLayers.resize(spec.layers);
+        for (int i = 0; i < spec.layers; ++i) {
+            previewLayers[i].name = spec.names[i];
+            renderPreview(values, i, beats, bpm, 48000, l, r);
+            mono(l, r, previewLayers[i].mono);
+        }
+        renderPreview(values, -1, beats, bpm, 48000, l, r);
+        mono(l, r, previewSum);
     }
 
     void onButton(int id) override
@@ -103,6 +133,18 @@ protected:
 
 private:
     NanoImage car;
+
+    using OffbeatKitUI::renderPreview;
+    static void renderPreview(const float* v, int layer, double beats, double bpm, int sr, std::vector<float>& l, std::vector<float>& r)
+    {
+        offbeat::renderPreview(v, layer, beats, bpm, sr, l, r);
+    }
+    static void mono(const std::vector<float>& l, const std::vector<float>& r, std::vector<float>& out)
+    {
+        out.resize(l.size());
+        for (size_t i = 0; i < l.size(); ++i)
+            out[i] = 0.5f * (l[i] + r[i]);
+    }
 
     int currentMode() const
     {

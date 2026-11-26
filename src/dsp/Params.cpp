@@ -94,6 +94,11 @@ const ParamInfo kParams[kParamCount] = {
     { "Combo Bass Bounce", "combo_bounce",   "st",   0,      36,      24,      0 },
     { "Combo Bounce Time", "combo_btime",    "ms",   5,      60,      12,      0 },
     { "Dichte",            "density",        "",     0,      1,       0,       0 },
+    { "Preview",           "preview",        "",     0,      15,      0,       kFlagInt | kFlagHidden },
+    { "Preview Loop",      "preview_loop",   "",     0,      1,       0,       kFlagBool | kFlagHidden },
+    { "Preview Bar",       "preview_bar",    "",     0,      1,       0,       kFlagBool | kFlagHidden },
+    { "Preview Active",    "preview_active", "",     0,      4,       0,       kFlagOutput | kFlagHidden },
+    { "Current BPM",       "current_bpm",    "BPM",  20,     300,     160,     kFlagOutput | kFlagHidden },
 };
 
 namespace {
