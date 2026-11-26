@@ -69,7 +69,7 @@ protected:
         kit::upper(kModeNames[mode], label, sizeof(label));
         drawPanel(kMargin, kModePanelY, kW - 2 * kMargin, kLabelH + 2 * kCellH, label, accent);
         char tag[48];
-        std::snprintf(tag, sizeof(tag), "MODE %d/%d  \xc2\xb7  VST3 / LV2", mode + 1, kModeCount);
+        std::snprintf(tag, sizeof(tag), "MODE %d/%d", mode + 1, kModeCount);
         drawTag(kW - kMargin - 14, kModePanelY + 13, tag);
         int list[16];
         const int count = modeParams(mode, list);
@@ -83,15 +83,6 @@ protected:
             setValue(kMode, (float)(id - 100), true);
     }
 
-    // KOPIEREN: Modus, globale Regler, Oktave/Tempo und die Regler des aktiven Modus.
-    int jsonParams(int* out, int) const override
-    {
-        const int head[] = { kMode, kVolume, kDrive, kTone, offbeat::kWidth, kOctave, kTempoHost, kTempoBpm };
-        int n = 0;
-        for (int p : head)
-            out[n++] = p;
-        return n + modeParams(currentMode(), out + n);
-    }
 
     // Name ohne Modus-Vorsilbe ("Kick Start Pitch" → "Start Pitch"), kurze Namen für die Kopfzeile.
     const char* controlLabel(int p) const override
