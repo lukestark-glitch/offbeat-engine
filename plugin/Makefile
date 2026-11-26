@@ -28,5 +28,10 @@ $(DPF_BUILD_DIR)/OffbeatUI.cpp.o: $(DPF_BUILD_DIR)/CarImage.h
 
 TARGETS += vst3
 TARGETS += lv2
+TARGETS += vst2
+TARGETS += clap
+ifeq ($(MACOS),true)
+TARGETS += au
+endif
 
 all: $(TARGETS)
