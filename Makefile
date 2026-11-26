@@ -1,7 +1,7 @@
 # Offbeat Engine – Build für Plugin (VST3, VST2, AU, CLAP, LV2) und Offline-Renderer.
 #   make            Plugin + offbeat-render (macOS: Universal-Binary für Intel und Apple Silicon)
 #   make install    macOS: nach ~/Library/Audio/Plug-Ins kopieren und ad-hoc signieren
-#   make check      Kick-Abnahme mit offbeat-render
+#   make check      jeden Modus mit offbeat-render rendern und prüfen
 # Windows (MSYS2/MinGW) und Linux: `make` baut nach bin/; Installation siehe README.
 
 CXX ?= c++
@@ -34,8 +34,19 @@ bin/offbeat-render: tools/offbeat-render.cpp $(DSP_SRC) $(DSP_HDR)
 	@mkdir -p bin
 	$(CXX) -std=gnu++17 -O2 -Wall -Wextra -Isrc/dsp tools/offbeat-render.cpp $(DSP_SRC) -o $@
 
+# Jeder Modus mit seinem Preset auf seiner Taste (Riser/Sirene mit Gate über die ganze Dauer)
 check: render
 	bin/offbeat-render --preset "Kick - Hard Bounce" --note F1 --bpm 160 --check
+	bin/offbeat-render --preset "Kick - Bounce Soft" --note F1 --check
+	bin/offbeat-render --preset "Bass - Offbeat F2" --note F2 --check
+	bin/offbeat-render --preset "Bass - Rolling Sub" --note F2 --check
+	bin/offbeat-render --preset "Hat - Closed Soft" --note F#3 --check
+	bin/offbeat-render --preset "Hat - Open Soft" --note A#3 --check
+	bin/offbeat-render --preset "Stab - Rave" --note F4 --check
+	bin/offbeat-render --preset "Lead - Flow" --note F4 --check
+	bin/offbeat-render --preset "Pad - Milchglas" --note F3 --check
+	bin/offbeat-render --preset "Riser - 8 Takte" --note F2 --length 12500 --tail 500 --check
+	bin/offbeat-render --preset "Siren - 16 Takte" --note F3 --length 24500 --tail 500 --check
 
 install: plugin
 	rm -rf "$(VST3_DIR)/offbeat.vst3" "$(LV2_DIR)/offbeat.lv2" "$(PLUGINS_DIR)/VST/offbeat.vst" \
