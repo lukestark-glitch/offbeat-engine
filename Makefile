@@ -1,5 +1,6 @@
 # Offbeat Engine – Build für Plugin (VST3, VST2, AU, CLAP, LV2) und Offline-Renderer.
-#   make            Plugin + offbeat-render (macOS: Universal-Binary für Intel und Apple Silicon)
+#   make            Plugin + offbeat-render (macOS: Universal-Binary für Intel und Apple Silicon;
+#                   make UNIVERSAL=false nur für die eigene Architektur)
 #   make install    macOS: nach ~/Library/Audio/Plug-Ins kopieren und ad-hoc signieren
 #   make check      jeden Modus mit offbeat-render rendern und prüfen
 # Windows (MSYS2/MinGW) und Linux: `make` baut nach bin/; Installation siehe README.
@@ -11,7 +12,9 @@ PLUGINS_DIR = $(HOME)/Library/Audio/Plug-Ins
 VST3_DIR = $(PLUGINS_DIR)/VST3
 LV2_DIR  = $(PLUGINS_DIR)/LV2
 
-ifeq ($(shell uname -s),Darwin)
+# UNIVERSAL=false baut auf dem Mac nur für die eigene Architektur (z. B. schneller auf einem Intel-Mac).
+UNIVERSAL ?= true
+ifeq ($(shell uname -s)$(UNIVERSAL),Darwintrue)
 # Universal-Binary: läuft auf Intel- und Apple-Silicon-Macs
 ARCH_FLAGS = -arch x86_64 -arch arm64 -mmacosx-version-min=10.15
 PLUGIN_ENV = CFLAGS="$(ARCH_FLAGS)" CXXFLAGS="$(ARCH_FLAGS)" LDFLAGS="$(ARCH_FLAGS)" NOOPT=true  # NOOPT: ohne x86-only-Flags (-mfpmath=sse)

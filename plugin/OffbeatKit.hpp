@@ -22,6 +22,10 @@
 #include <string>
 #include <vector>
 
+#ifndef OFFBEAT_VERSION
+#define OFFBEAT_VERSION "dev" // kommt aus plugin/Makefile (git describe)
+#endif
+
 START_NAMESPACE_DISTRHO
 
 namespace kit {
@@ -187,6 +191,10 @@ protected:
         fillColor(th.text);
         text(cx + 105, cy + 36, th.subtitle, nullptr);
         textLetterSpacing(0);
+        fontSize(8); // Versionsnummer klein links unter der Plakette
+        textAlign(ALIGN_LEFT | ALIGN_MIDDLE);
+        fillColor(kit::withAlpha(th.dim, 0.7f));
+        text(cx - 105, cy + 36, OFFBEAT_VERSION, nullptr);
     }
 
     // Abschnitt im Ticket-Stil: dunkle Plakette, dünner Neonrand, Kopfzeile mit Linie.
