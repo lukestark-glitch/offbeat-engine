@@ -83,15 +83,6 @@ protected:
             setValue(kMode, (float)(id - 100), true);
     }
 
-    // KOPIEREN: Modus, globale Regler, Oktave/Tempo und die Regler des aktiven Modus.
-    int jsonParams(int* out, int) const override
-    {
-        const int head[] = { kMode, kVolume, kDrive, kTone, offbeat::kWidth, kOctave, kTempoHost, kTempoBpm };
-        int n = 0;
-        for (int p : head)
-            out[n++] = p;
-        return n + modeParams(currentMode(), out + n);
-    }
 
     // Name ohne Modus-Vorsilbe ("Kick Start Pitch" → "Start Pitch"), kurze Namen für die Kopfzeile.
     const char* controlLabel(int p) const override

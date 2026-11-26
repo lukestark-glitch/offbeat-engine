@@ -114,4 +114,7 @@ void applyDefaults(float out[kParamCount]);
 // Parameter eines Modus in Anzeige-Reihenfolge; Rückgabe: Anzahl (höchstens 16).
 int modeParams(int mode, int out[16]);
 
+// Parameter, die KOPIEREN (und topline/offbeat-render --preset-json) als JSON ausgibt.
+int jsonParams(const float values[kParamCount], int* out);
+
 } // namespace offbeat
