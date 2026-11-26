@@ -69,6 +69,10 @@ install: plugin
 	codesign --force --deep -s - "$(PLUGINS_DIR)/Components/offbeat.component"
 	codesign --force --deep -s - "$(PLUGINS_DIR)/CLAP/offbeat.clap"
 	killall -9 AudioComponentRegistrar 2>/dev/null || true  # AU-Liste neu einlesen
+	rm -rf "$(HOME)/Applications/Offbeat Engine.app"  # Standalone-App
+	mkdir -p "$(HOME)/Applications"
+	cp -R bin/offbeat.app "$(HOME)/Applications/Offbeat Engine.app"
+	codesign --force --deep -s - "$(HOME)/Applications/Offbeat Engine.app"
 
 clean:
 	rm -rf bin build

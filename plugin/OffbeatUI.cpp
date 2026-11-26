@@ -13,7 +13,7 @@ using kit::kLabelH;
 
 namespace {
 constexpr float kW = 860, kH = 652, kMargin = 20, kGridX = 31, kCols = 7;
-constexpr float kGlobalPanelY = 104, kModePanelY = 252, kPreviewY = 510;
+constexpr float kGlobalPanelY = 104, kModePanelY = 252, kPreviewY = 510, kKeysH = 96; // kKeysH: Tastatur der App
 
 const int kGlobals[4] = { kVolume, kDrive, kTone, offbeat::kWidth };
 
@@ -38,8 +38,10 @@ kit::Theme engineTheme()
 class OffbeatUI : public OffbeatKitUI {
 public:
     OffbeatUI()
-        : OffbeatKitUI(kW, kH, engineTheme())
+        : OffbeatKitUI(kW, kit::isStandaloneApp() ? kH + kKeysH : kH, engineTheme())
     {
+        if (kit::isStandaloneApp() && isUsingNativeAudio() && supportsMIDI() && !isMIDIEnabled())
+            requestMIDI(); // MIDI-Keyboards in der App einschalten
         car = createImageFromMemory(car_png, car_png_len, IMAGE_GENERATE_MIPMAPS);
     }
 
@@ -80,7 +82,14 @@ protected:
         // Vorschau: so klingt der Modus mit den aktuellen Reglern (echter DSP, offline gerendert)
         drawPanel(kMargin, kPreviewY, kW - 2 * kMargin, kH - kPreviewY - 12, "VORSCHAU", accent);
         drawPreview(kMargin + 14, kPreviewY + kLabelH + 2, kW - 2 * kMargin - 28, kH - kPreviewY - kLabelH - 26, accent);
+
+        if (kit::isStandaloneApp()) { // App: Bildschirm-Tastatur, auch mit der Computer-Tastatur spielbar
+            drawPanel(kMargin, kH - 4, kW - 2 * kMargin, kKeysH - 8, "TASTATUR  \xc2\xb7  A W S E D F T G Z H U J K   \xc2\xb7  - / +  OKTAVE", th.brand);
+            drawKeyboard(kMargin + 14, kH - 4 + kLabelH, kW - 2 * kMargin - 28, kKeysH - kLabelH - 16, th.brand);
+        }
     }
+
+    int octaveParam() const override { return kOctave; }
 
     PreviewParams previewParams() const override
     {

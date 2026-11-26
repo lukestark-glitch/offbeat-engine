@@ -10,6 +10,8 @@
 // KOPIEREN/EINFÜGEN = Einstellungen als JSON über die Zwischenablage.
 #pragma once
 
+#include "DistrhoPluginUtils.hpp"
+#include "DistrhoStandaloneUtils.hpp"
 #include "DistrhoUI.hpp"
 #include "ParamText.hpp"
 
@@ -47,6 +49,12 @@ inline void upper(const char* in, char* out, size_t size)
     out[i] = 0;
 }
 
+// Läuft das Plugin als eigene App (DPF-Standalone, Ton über CoreAudio/RtAudio ohne JACK)?
+inline bool isStandaloneApp()
+{
+    return std::strstr(DISTRHO_NAMESPACE::getPluginFormatName(), "Standalone") != nullptr;
+}
+
 // Farben und Schriftzug eines Plugins.
 struct Theme {
     const char* title;    // großer Schriftzug im Logo, z. B. "OFFBEAT"
@@ -76,7 +84,8 @@ public:
 protected:
     enum { kButtonCopy = -1, kButtonPaste = -2,
            kButtonPreview = -10 /* -10 … -12: Ebene 1–3 */, kButtonPreviewAll = -13, kButtonPreviewLoop = -14,
-           kButtonPreviewRange = -15 };
+           kButtonPreviewRange = -15, kButtonOctaveDown = -20, kButtonOctaveUp = -21,
+           kButtonKey = -200 /* -200 … -224: Taste 0–24 der Bildschirm-Tastatur */ };
 
     // ---- vom Plugin zu füllen -----------------------------------------------------------------
 
@@ -98,6 +107,8 @@ protected:
         std::vector<float> mono; // gerendert mit dem echten DSP
     };
     virtual PreviewParams previewParams() const { return PreviewParams(); }
+    // Octave-Regler des Plugins (für die Bildschirm-Tastatur: Tasten klingen wie beschriftet), −1 = keiner
+    virtual int octaveParam() const { return -1; }
     // Ebenen neu rendern (UI-Thread, gedrosselt, nie im Audio-Thread): previewLayers füllen und in previewSum
     // die Summe („alle zusammen“, eigens gerendert). Länge = Ausschnitt.
     virtual void renderPreview() {}
@@ -584,6 +595,51 @@ protected:
         pill(kButtonPreviewRange, bx + bw + gap, rowY, bw, bh, bar ? "1 Takt" : "1 Schlag", c, false);
     }
 
+    // Bildschirm-Tastatur (nur in der Standalone-App sinnvoll): zwei Oktaven ab C der Tastatur-Oktave,
+    // links OKT−/OKT+. Spielbar mit der Maus und der Computer-Tastatur (A W S E D F T G Z/Y H U J K O L P,
+    // „-“/„+“ = Oktave). Gedrückte Tasten leuchten in c.
+    void drawKeyboard(float x, float y, float w, float h, const Color& c)
+    {
+        const float bw = 56;
+        pill(kButtonOctaveDown, x, y + 4, bw, 22, "Okt -", c, false);
+        pill(kButtonOctaveUp, x, y + 32, bw, 22, "Okt +", c, false);
+        char oct[16]; // Oktave steht auf den C-Tasten
+        textAlign(ALIGN_CENTER | ALIGN_MIDDLE);
+
+        static const int kWhite[7] = { 0, 2, 4, 5, 7, 9, 11 };
+        const float kx = x + bw + 10, kw = w - bw - 10, whiteW = kw / 15.0f;
+        for (int i = 0; i < 15; ++i) { // weiße Tasten (15 = zwei Oktaven + C)
+            const int semi = 12 * (i / 7) + kWhite[i % 7];
+            const float tx = kx + i * whiteW;
+            addHit(-1, kButtonKey - semi, tx, y, whiteW, h, kButton, y + h);
+            beginPath();
+            roundedRect(tx + 1, y, whiteW - 2, h, 3);
+            fillPaint(linearGradient(0, y, 0, y + h, keyDown[semi] ? c : th.chromeHi, keyDown[semi] ? kit::withAlpha(c, 0.7f) : th.chromeLo));
+            fill();
+            if (semi % 12 == 0) {
+                std::snprintf(oct, sizeof(oct), "C%d", keyboardOctave + semi / 12);
+                fontSize(8);
+                fillColor(th.night);
+                text(tx + whiteW / 2, y + h - 8, oct, nullptr);
+            }
+        }
+        for (int i = 0; i < 14; ++i) { // schwarze Tasten darüber (Klickflächen zuletzt = oben)
+            const int pos = i % 7;
+            if (pos == 2 || pos == 6)
+                continue;
+            const int semi = 12 * (i / 7) + kWhite[pos] + 1;
+            const float tx = kx + (i + 1) * whiteW - whiteW * 0.32f;
+            addHit(-1, kButtonKey - semi, tx, y, whiteW * 0.64f, h * 0.6f, kButton, y + h);
+            beginPath();
+            roundedRect(tx, y, whiteW * 0.64f, h * 0.6f, 2);
+            fillColor(keyDown[semi] ? c : th.night);
+            fill();
+            strokeColor(kit::withAlpha(c, 0.5f));
+            strokeWidth(1);
+            stroke();
+        }
+    }
+
     // Farbe einer Ebene: Ebene 0 in der Akzentfarbe, weitere heller bzw. wärmer
     static Color layerColor(const Color& c, int i)
     {
@@ -755,6 +811,11 @@ protected:
         if (ev.button != kMouseButtonLeft)
             return false;
 
+        if (!ev.press && mouseKey >= 0) { // Taste der Bildschirm-Tastatur losgelassen
+            playKey(mouseKey, false);
+            mouseKey = -1;
+            return true;
+        }
         if (!ev.press) {
             if (dragParam >= 0) {
                 editParameter(dragParam, false);
@@ -773,6 +834,13 @@ protected:
                 pasteSettings();
             else if (h->button <= kButtonPreview && h->button >= kButtonPreviewRange)
                 previewButton(h->button);
+            else if (h->button == kButtonOctaveDown || h->button == kButtonOctaveUp) {
+                keyboardOctave = std::max(0, std::min(7, keyboardOctave + (h->button == kButtonOctaveUp ? 1 : -1)));
+                redraw();
+            } else if (h->button <= kButtonKey && h->button > kButtonKey - 25) {
+                mouseKey = kButtonKey - h->button;
+                playKey(mouseKey, true);
+            }
             else
                 onButton(h->button);
             return true;
@@ -843,6 +911,22 @@ protected:
 
     bool onKeyboard(const KeyboardEvent& ev) override
     {
+        if (editParam < 0 && kit::isStandaloneApp()) { // Standalone: Computer-Tastatur spielt Noten
+            static const char kKeys[] = "awsedftgzhujkolp"; // C … D# der nächsten Oktave
+            const uint key = ev.key >= 'A' && ev.key <= 'Z' ? ev.key + 32 : ev.key;
+            if (ev.press && (key == '-' || key == '+')) {
+                keyboardOctave = std::max(0, std::min(7, keyboardOctave + (key == '+' ? 1 : -1)));
+                redraw();
+                return true;
+            }
+            const char* at = key ? std::strchr(kKeys, (int)(key == 'y' ? 'z' : key)) : nullptr; // y = z (QWERTZ)
+            if (at && *at) {
+                const int semi = (int)(at - kKeys);
+                if (ev.press != keyDown[semi]) // Tasten-Wiederholung ignorieren
+                    playKey(semi, ev.press);
+                return true;
+            }
+        }
         if (editParam < 0 || !ev.press)
             return false;
         if (ev.key == kKeyEnter)
@@ -882,6 +966,8 @@ private:
     uint lastClickTime = 0;
     int screenshotTicks = 0;
     bool previewDirty = true, previewToggle = false;
+    int keyboardOctave = 3, mouseKey = -1;
+    bool keyDown[25] = {};
     std::chrono::steady_clock::time_point previewRendered;
     float dragY = 0, dragNorm = 0;
     std::string editText, status;
@@ -943,6 +1029,24 @@ private:
             setValue(p, v, true);
         else if (!editText.empty())
             showStatus("Ung\xc3\xbcltige Eingabe");
+        redraw();
+    }
+
+    // Taste 0–24 der Bildschirm-Tastatur spielen: klingt wie beschriftet (Octave-Regler herausgerechnet)
+    void playKey(int semi, bool down)
+    {
+        if (semi < 0 || semi > 24)
+            return;
+        const int shift = octaveParam() >= 0 ? 12 * (int)std::lround(values[octaveParam()]) : 0;
+        const int note = std::max(0, std::min(127, 12 * (keyboardOctave + 1) + semi - shift));
+        if (down && keyDown[semi])
+            return;
+        keyDown[semi] = down;
+#if DISTRHO_PLUGIN_WANT_MIDI_INPUT
+        sendNote(0, (uint8_t)note, down ? 100 : 0);
+#else
+        (void)note; // Effekte (Turbo) haben keinen MIDI-Eingang
+#endif
         redraw();
     }
 

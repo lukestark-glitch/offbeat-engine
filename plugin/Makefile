@@ -37,6 +37,7 @@ TARGETS += vst2
 TARGETS += clap
 ifeq ($(MACOS),true)
 TARGETS += au
+TARGETS += jack # Standalone-App (Ton über CoreAudio, ohne JACK-Installation)
 endif
 
 all: $(TARGETS)
