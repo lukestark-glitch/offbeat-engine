@@ -100,6 +100,9 @@ enum ParamId {
     kPreviewActive, // Anzeige: welche Ebene gerade vorgehört wird (0 = keine)
     kCurrentBpm,    // Anzeige: Tempo, mit dem die Engine gerade rechnet (Offbeat-Linie der Vorschau)
 
+    kMidiChannel, // MIDI-Kanal 1–16, 0 = alle (Omni); ersetzt Carlas MIDI Channel Filter
+
+
     kParamCount
 };
 

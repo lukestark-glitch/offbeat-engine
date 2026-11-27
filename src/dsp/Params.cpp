@@ -12,6 +12,9 @@ const float kPadLfoBeats[5] = { 1, 2, 4, 8, 16 };
 const float kSirenBeats[5] = { 4, 2, 1, 0.5f, 0.25f };
 
 // clang-format off
+static const char* const kMidiChannelNames[17] = { "Omni", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+                                                   "13", "14", "15", "16" };
+
 const ParamInfo kParams[kParamCount] = {
     // name                symbol            unit    min     max      default  flags
     { "Mode",              "mode",           "",     0,      6,       0,       kFlagInt, kModeNames },
@@ -99,6 +102,7 @@ const ParamInfo kParams[kParamCount] = {
     { "Preview Bar",       "preview_bar",    "",     0,      1,       0,       kFlagBool | kFlagHidden },
     { "Preview Active",    "preview_active", "",     0,      4,       0,       kFlagOutput | kFlagHidden },
     { "Current BPM",       "current_bpm",    "BPM",  20,     300,     160,     kFlagOutput | kFlagHidden },
+    { "MIDI Channel", "midi_channel", "", 0, 16, 0, kFlagInt, kMidiChannelNames },
 };
 
 namespace {
