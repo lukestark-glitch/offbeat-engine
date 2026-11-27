@@ -7,6 +7,7 @@
 //   offbeat-render --list
 //
 // --note ist die Taste wie in der LMMS-Piano-Roll: der Renderer schickt sie wie LMMS 12 Halbtöne tiefer.
+#include "../src/link/OffbeatFxTest.hpp"
 #include "Engine.hpp"
 #include "Render.hpp"
 #include "Preview.hpp"
@@ -164,6 +165,8 @@ static void usage()
 
 int main(int argc, char** argv)
 {
+    if (argc == 2 && std::strcmp(argv[1], "--fx-check") == 0) // Beat FX (gemeinsamer Code der Familie)
+        return offbeat::fx::fxCheck();
     if (argc == 2 && std::strcmp(argv[1], "--meta-check") == 0) { // Regler-Beschreibung für Offbeat Performance
         setenv("OFFBEAT_META_DIR", "/tmp/offbeat-meta-check", 1);
         const bool wrote = offbeat::writePluginMeta();

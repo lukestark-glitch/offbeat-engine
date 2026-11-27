@@ -40,6 +40,7 @@ bin/offbeat-render: tools/offbeat-render.cpp $(DSP_SRC) $(DSP_HDR)
 # Jeder Modus mit seinem Preset auf seiner Taste (Riser/Sirene mit Gate über die ganze Dauer)
 check: render
 	bin/offbeat-render --meta-check
+	bin/offbeat-render --fx-check
 	bin/offbeat-render --preset "Kick - Hard Bounce" --note F1 --bpm 160 --check
 	bin/offbeat-render --preset "Kick - Bounce Soft" --note F1 --check
 	bin/offbeat-render --preset "Bass - Offbeat F2" --note F2 --check
